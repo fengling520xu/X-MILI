@@ -4,6 +4,7 @@ set -e
 APP_NAME="X-MILI"
 REPO="https://github.com/Aimilibot/X-MILI"
 RAW="${X_MILI_RAW_BASE:-https://raw.githubusercontent.com/Aimilibot/X-MILI/main}"
+GO_VERSION="${X_MILI_GO_VERSION:-1.26.2}"
 INSTALL_DIR="${XUI_MAIN_FOLDER:-/usr/local/x-ui}"
 DATA_DIR="/etc/x-ui"
 LANG_DIR="/etc/x-mili"
@@ -37,13 +38,13 @@ is_zh() { [[ "$X_MILI_LANG" == "zh_CN" ]]; }
 install_deps() {
     if command -v apt-get >/dev/null 2>&1; then
         apt-get update
-        apt-get install -y ca-certificates curl tar gzip unzip gcc g++ make golang-go
+        apt-get install -y ca-certificates curl tar gzip unzip gcc g++ make
     elif command -v dnf >/dev/null 2>&1; then
-        dnf install -y ca-certificates curl tar gzip unzip gcc gcc-c++ make golang
+        dnf install -y ca-certificates curl tar gzip unzip gcc gcc-c++ make
     elif command -v yum >/dev/null 2>&1; then
-        yum install -y ca-certificates curl tar gzip unzip gcc gcc-c++ make golang
+        yum install -y ca-certificates curl tar gzip unzip gcc gcc-c++ make
     elif command -v apk >/dev/null 2>&1; then
-        apk add --no-cache ca-certificates curl tar gzip unzip go build-base
+        apk add --no-cache ca-certificates curl tar gzip unzip build-base
     else
         fail "Unsupported package manager / 不支持的包管理器"
     fi
@@ -57,6 +58,28 @@ detect_arch() {
         armv7* | armv6* | arm*) echo "arm" ;;
         *) echo "amd64" ;;
     esac
+}
+
+detect_go_arch() {
+    case "$(uname -m)" in
+        x86_64 | amd64) echo "amd64" ;;
+        i386 | i686) echo "386" ;;
+        aarch64 | arm64) echo "arm64" ;;
+        armv6* | armv7* | arm*) echo "armv6l" ;;
+        *) echo "amd64" ;;
+    esac
+}
+
+install_go() {
+    local go_arch
+    go_arch=$(detect_go_arch)
+    local url="https://go.dev/dl/go${GO_VERSION}.linux-${go_arch}.tar.gz"
+    log "Installing Go ${GO_VERSION}"
+    curl -fL "$url" -o /tmp/x-mili-go.tar.gz
+    rm -rf /usr/local/go
+    tar -C /usr/local -xzf /tmp/x-mili-go.tar.gz
+    rm -f /tmp/x-mili-go.tar.gz
+    export PATH="/usr/local/go/bin:$PATH"
 }
 
 install_service() {
@@ -88,6 +111,7 @@ is_zh && log "开始安装/更新 ${APP_NAME}" || log "Installing/updating ${APP
 
 command -v systemctl >/dev/null 2>&1 || fail "需要 systemd / systemd is required"
 install_deps
+install_go
 
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT
@@ -98,7 +122,7 @@ mkdir -p "$tmp_dir/src"
 tar -xzf "$tmp_dir/source.tar.gz" -C "$tmp_dir/src" --strip-components=1
 
 cd "$tmp_dir/src"
-go build -ldflags "-w -s" -o build/x-ui main.go
+/usr/local/go/bin/go build -ldflags "-w -s" -o build/x-ui main.go
 chmod +x DockerInit.sh
 ./DockerInit.sh "$(detect_arch)"
 
