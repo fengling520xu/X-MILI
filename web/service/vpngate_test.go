@@ -117,7 +117,8 @@ func TestBuildVPNGateOutbound(t *testing.T) {
 }
 
 func TestVPNGateOpenVPNCheckRejectsBadConfig(t *testing.T) {
-	if testVPNGateOpenVPN(VPNGateServer{OpenVPNConfig: "bad"}) {
+	ok, latency := testVPNGateOpenVPN(VPNGateServer{OpenVPNConfig: "bad"})
+	if ok || latency != -1 {
 		t.Fatalf("bad OpenVPN config was accepted")
 	}
 }

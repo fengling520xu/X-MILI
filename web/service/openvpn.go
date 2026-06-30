@@ -895,39 +895,11 @@ func (s *OpenVPNService) UninstallVPNGate() error {
 	vpnGateOpenVPN.status.Outbound = nil
 	vpnGateOpenVPN.Unlock()
 
-	// 2. Perform package purging on Linux
-	if runtime.GOOS == "linux" {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-
-		var err error
-		switch {
-		case commandExists("apt-get"):
-			err = runCommand(ctx, "apt-get", "purge", "-y", "openvpn")
-			if err == nil {
-				_ = runCommand(ctx, "apt-get", "autoremove", "-y")
-			}
-		case commandExists("dnf"):
-			err = runCommand(ctx, "dnf", "remove", "-y", "openvpn")
-		case commandExists("yum"):
-			err = runCommand(ctx, "yum", "remove", "-y", "openvpn")
-		case commandExists("apk"):
-			err = runCommand(ctx, "apk", "del", "openvpn")
-		case commandExists("pacman"):
-			err = runCommand(ctx, "pacman", "-Rns", "--noconfirm", "openvpn")
-		default:
-			err = errors.New("unsupported package manager for uninstallation")
-		}
-		if err != nil {
-			logger.Warningf("[VPNGate] Failed to uninstall openvpn package: %v", err)
-		}
-	}
-
-	// 3. Clear node information (servers list cache)
+	// 2. Clear node information (servers list cache)
 	vpngateService := &VPNGateService{}
 	vpngateService.ClearCache()
 
-	// 4. Remove outbound tag "vpngate" from xray template
+	// 3. Remove outbound tag "vpngate" from xray template
 	_ = removeXrayVPNGateOutbound()
 
 	return nil

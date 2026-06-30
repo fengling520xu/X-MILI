@@ -343,7 +343,7 @@ func checkVPNGateServers(servers []VPNGateServer) []VPNGateServer {
 				ping := pingVPNGateIP(server.IP)
 				alive := ping >= 0
 				if useOpenVPNCheck {
-					alive = testVPNGateOpenVPN(server)
+					alive, ping = testVPNGateOpenVPN(server)
 				} else if server.Proto == "tcp" && server.Port != "" {
 					alive = testVPNGateTCP(server.IP, server.Port)
 				}
@@ -389,35 +389,36 @@ func testVPNGateTCP(ip, port string) bool {
 	return true
 }
 
-func testVPNGateOpenVPN(server VPNGateServer) bool {
+func testVPNGateOpenVPN(server VPNGateServer) (bool, int64) {
 	ovpn, err := sanitizeVPNGateOpenVPNConfig(server.OpenVPNConfig)
 	if err != nil || !commandExists("openvpn") {
-		return false
+		return false, -1
 	}
 
 	tmp, err := os.CreateTemp("", "vpngate-check-*.ovpn")
 	if err != nil {
-		return false
+		return false, -1
 	}
 	configPath := tmp.Name()
 	defer os.Remove(configPath)
 	if _, err := tmp.WriteString(ovpn); err != nil {
 		tmp.Close()
-		return false
+		return false, -1
 	}
 	if err := tmp.Close(); err != nil {
-		return false
+		return false, -1
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 18*time.Second)
 	defer cancel()
 
+	start := time.Now()
 	writer := &openVPNLogWriter{}
 	cmd := exec.CommandContext(ctx, "openvpn", "--config", configPath, "--route-nopull", "--auth-nocache", "--verb", "3", "--connect-retry-max", "1", "--connect-timeout", "8")
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 	if err := cmd.Start(); err != nil {
-		return false
+		return false, -1
 	}
 
 	done := make(chan error, 1)
@@ -432,15 +433,19 @@ func testVPNGateOpenVPN(server VPNGateServer) bool {
 		select {
 		case <-ticker.C:
 			if writer.contains("Initialization Sequence Completed") {
+				ms := time.Since(start).Milliseconds()
 				cancel()
 				<-done
-				return true
+				return true, ms
 			}
 		case <-done:
-			return writer.contains("Initialization Sequence Completed")
+			if writer.contains("Initialization Sequence Completed") {
+				return true, time.Since(start).Milliseconds()
+			}
+			return false, -1
 		case <-ctx.Done():
 			<-done
-			return false
+			return false, -1
 		}
 	}
 }
