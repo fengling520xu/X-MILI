@@ -746,7 +746,7 @@ func triggerVPNGateFailover(taskID int64) {
 	vpngateService := &VPNGateService{}
 	servers, err := vpngateService.ListServers(true)
 	if err != nil {
-		vpnGateOpenVPN.fail(taskID, fmt.Sprintf("失效替换失败: 无法获取节点列表 (%v)", err))
+		vpnGateOpenVPN.fail(taskID, fmt.Sprintf("自动切换失败: 无法获取节点列表 (%v)", err))
 		return
 	}
 
@@ -786,7 +786,7 @@ func triggerVPNGateFailover(taskID int64) {
 	}
 
 	if len(candidates) == 0 {
-		vpnGateOpenVPN.fail(taskID, "失效替换失败: 无可用后备节点")
+		vpnGateOpenVPN.fail(taskID, "自动切换失败: 无可用后备节点")
 		return
 	}
 
@@ -811,7 +811,7 @@ func triggerVPNGateFailover(taskID int64) {
 		return
 	}
 	vpnGateOpenVPN.status.Server = &best
-	vpnGateOpenVPN.status.Message = fmt.Sprintf("正在尝试失效替换节点 [%s - %s]", best.CountryLong, best.IP)
+	vpnGateOpenVPN.status.Message = fmt.Sprintf("正在自动切换节点 [%s - %s]", best.CountryLong, best.IP)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	vpnGateOpenVPN.cancel = cancel

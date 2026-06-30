@@ -1,160 +1,151 @@
 {{define "modals/vpngateModal"}}
 <a-modal id="vpngate-modal" v-model="vpngateModal.visible" title="VPNGate" :confirm-loading="vpngateModal.confirmLoading"
     :closable="true" :mask-closable="true" :footer="null" :class="themeSwitcher.currentTheme" width="760px">
-    
-    <!-- Top Toolbar & Current Connection Panel -->
-        <div class="vpngate-top">
-            <div class="vpngate-header-row" :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }">
-                <div class="vpngate-header-left">
-                    <span :style="{ fontWeight: 600, fontSize: '15px' }">当前状态: </span>
+    <div class="vpngate-top">
+        <div class="vpngate-summary">
+            <div class="vpngate-summary-main">
+                <div class="vpngate-status-row">
+                    <span class="vpngate-status-label">当前状态</span>
                     <a-tag :color="statusColor">[[ statusName ]]</a-tag>
-                    <a-tag :style="{ marginLeft: '8px' }">[[ ruleName ]]</a-tag>
+                    <a-tag>[[ shortRuleName ]]</a-tag>
                 </div>
-                <div class="vpngate-header-right">
-                    <a-button v-if="isConnected" type="danger" icon="disconnect" @click="disconnectVPNGate">断开</a-button>
-                    <a-button v-else type="primary" icon="api" @click="connectVPNGate" :loading="connectBusy || vpngateModal.confirmLoading" :disabled="connectBusy || needsCountry"
-                        :title="addOutboundDisabledReason">连接</a-button>
-                </div>
+                <div class="vpngate-node-title">[[ currentCountry ]]</div>
+                <div class="vpngate-node-ip vpngate-mono">[[ currentNodeIP ]]</div>
             </div>
-            
-            <div class="vpngate-panel vpngate-current">
-                <div class="vpngate-panel-title">当前准备连接节点</div>
-                <template v-if="displayServer">
-                    <div class="vpngate-current-strip">
-                        <div class="vpngate-current-main">
-                            <small>IP</small>
-                            <span class="vpngate-current-ip">[[ displayServer.ip ]]</span>
-                        </div>
-                        <div>
-                            <small>国家</small>
-                            <span class="vpngate-current-country">
-                                <img class="vpngate-flag" :src="'https://flagcdn.com/24x18/' + displayServer.countryShortLower + '.png'" :alt="displayServer.countryShort">
-                                [[ displayServer.countryLong ]]
-                            </span>
-                        </div>
-                        <div>
-                            <small>延迟</small>
-                            <span :class="pingClass(displayServer.localPing)">[[ formatPing(displayServer.localPing) ]]</span>
-                        </div>
-                    </div>
-                </template>
-                <div v-else class="vpngate-current-empty">[[ emptySelectionHint ]]</div>
+            <div class="vpngate-actions">
+                <a-button icon="sync" @click="refreshNodes" :loading="vpngateModal.confirmLoading">重新获取</a-button>
+                <a-button v-if="isConnected" type="danger" icon="disconnect" @click="disconnectVPNGate">断开</a-button>
+                <a-button v-else type="primary" icon="api" @click="connectVPNGate" :loading="connectBusy || vpngateModal.confirmLoading" :disabled="connectBusy || needsCountry"
+                    :title="addOutboundDisabledReason">连接</a-button>
             </div>
-            
-            <!-- Connection Process Logger -->
-            <div class="vpngate-panel" v-if="connectionActive">
-                <div class="vpngate-panel-title">连接进度</div>
-                <a-progress :percent="vpngateModal.connectStatus.progress || 0" :status="progressStatus"></a-progress>
-                <div class="vpngate-status-line">
-                    <span>[[ vpngateModal.connectStatus.message ]]</span>
-                    <span v-if="vpngateModal.connectStatus.tunIP" class="vpngate-mono">[[ vpngateModal.connectStatus.tunDev ]] · [[ vpngateModal.connectStatus.tunIP ]]</span>
+            <div class="vpngate-metrics">
+                <div class="vpngate-metric">
+                    <small>延迟</small>
+                    <span :class="pingClass(currentMetricPing)">[[ currentPingText ]]</span>
                 </div>
-                <div class="vpngate-status-line">
-                    <span>候选 [[ candidateServers.length ]] 个</span>
-                    <span v-if="backupServers.length">备选：[[ backupServers.map(server => server.countryShort + ' ' + server.ip).join(' / ') ]]</span>
+                <div class="vpngate-metric">
+                    <small>IP 类型</small>
+                    <span>[[ currentIPType ]]</span>
                 </div>
-                <a-button v-if="canCancel" size="small" type="danger" icon="close" @click="cancelConnect">取消</a-button>
+                <div class="vpngate-metric">
+                    <small>ASN</small>
+                    <span class="vpngate-mono">[[ currentASN ]]</span>
+                </div>
+                <div class="vpngate-metric">
+                    <small>可用节点</small>
+                    <span>[[ availableNodeCount ]]</span>
+                </div>
+                <div class="vpngate-metric">
+                    <small>全部节点</small>
+                    <span>[[ totalNodeCount ]]</span>
+                </div>
+                <div class="vpngate-metric">
+                    <small>失效节点</small>
+                    <span>[[ failedNodeCount ]]</span>
+                </div>
             </div>
         </div>
 
-        <div class="vpngate-panel">
-                <a-space :style="{ marginBottom: '12px', flexWrap: 'wrap' }">
-                    <a-radio-group v-model="vpngateModal.ruleMode" button-style="solid" size="small" @change="onRuleModeChanged">
-                        <a-radio-button value="default">自动</a-radio-button>
-                        <a-radio-button value="fixed">国家</a-radio-button>
-                    </a-radio-group>
-                    <div class="vpngate-switch-card">
-                        <div>
-                            <strong>失效替换</strong>
-                            <small>连接失败或掉线时自动换下一个节点</small>
-                        </div>
-                        <a-switch v-model="vpngateModal.fallbackEnable" checked-children="开" un-checked-children="关" @change="saveVPNGateSettings"></a-switch>
-                    </div>
-                    <a-button icon="sync" @click="create(true)" :loading="vpngateModal.confirmLoading">刷新</a-button>
-                    <a-switch v-model="vpngateModal.showUnavailable" checked-children="显示不可用" un-checked-children="隐藏不可用" @change="create(true)"></a-switch>
-                    <a-button type="danger" icon="delete" @click="uninstallVPNGate" :loading="vpngateModal.confirmLoading">移除</a-button>
-                </a-space>
-                <div v-if="vpngateModal.ruleMode === 'fixed'" :style="{ marginBottom: '12px' }">
-                    <a-select
-                        mode="multiple"
-                        v-model="vpngateModal.selectedCountries"
-                        :dropdown-class-name="themeSwitcher.currentTheme"
-                        placeholder="选择要连接的国家/地区"
-                        :style="{ width: '100%' }"
-                        @change="onRuleModeChanged">
-                        <a-select-option v-for="country in countryOptions" :key="country.value" :value="country.value">
-                            <span class="vpngate-country">
-                                <img class="vpngate-flag" :src="'https://flagcdn.com/24x18/' + country.value.toLowerCase() + '.png'" :alt="country.value">
-                                [[ country.label ]]
-                            </span>
-                        </a-select-option>
-                    </a-select>
-                </div>
-                <a-tag color="green" :style="{ marginBottom: '8px' }">[[ selectedServers.length ]] 个候选节点</a-tag>
-                <a-alert v-if="vpngateModal.servers.length === 0" type="info" show-icon
-                    message="暂无节点，点击刷新获取节点" :style="{ marginTop: '8px' }"></a-alert>
-                <div v-else class="vpngate-table-wrap">
-                    <table class="vpngate-table">
-                        <thead>
-                            <tr>
-                                <th>国家</th>
-                                <th>节点 IP</th>
-                                <th>ASN</th>
-                                <th>IP 类型</th>
-                                <th>延迟</th>
-                                <th style="width: 150px; text-align: right;">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody v-for="group in groupedServers" :key="group.countryLong">
-                            <tr class="vpngate-country-header" @click="toggleCountryCollapse(group.countryLong)"
-                                :title="group.countryLong + '，' + group.servers.length + ' 个节点'">
-                                <td colspan="6">
-                                    <div class="vpngate-country-row">
-                                        <div class="vpngate-country-name">
-                                            <a-icon :type="isCountryCollapsed(group.countryLong) ? 'right' : 'down'"></a-icon>
-                                            <img class="vpngate-flag" :src="'https://flagcdn.com/24x18/' + group.countryShortLower + '.png'" :alt="group.countryShort">
-                                            <span>[[ group.countryLong ]]</span>
-                                        </div>
-                                        <a-tag color="cyan">[[ group.servers.length ]]</a-tag>
-                                    </div>
-                                </td>
-                            </tr>
-                            <template v-if="!isCountryCollapsed(group.countryLong)">
-                                <tr v-for="server in group.servers" :key="group.countryLong + server.hostName + server.ip" :style="{ opacity: server.localPing < 0 ? 0.45 : 1 }">
-                                    <td>
-                                        <span class="vpngate-country">
-                                            <img class="vpngate-flag" :src="'https://flagcdn.com/24x18/' + server.countryShortLower + '.png'" :alt="server.countryShort">
-                                            [[ server.countryLong ]]
-                                        </span>
-                                    </td>
-                                    <td class="vpngate-mono">[[ server.ip ]]</td>
-                                    <td class="vpngate-mono">[[ server.asn ]]</td>
-                                    <td>
-                                        <a-tag :color="server.ipType === '住宅IP' ? 'green' : (server.ipType === '机房IP' ? 'orange' : 'default')">
-                                                [[ server.ipType ]]
-                                        </a-tag>
-                                    </td>
-                                    <td>
-                                        <span :class="pingClass(server.localPing)">
-                                                [[ formatPing(server.localPing) ]]
-                                        </span>
-                                    </td>
-                                    <td style="text-align: right;">
-                                        <a-space>
-                                            <a-button size="small" icon="thunderbolt" :loading="isTestingServer(server)" :disabled="connectBusy || !!vpngateModal.testingNodeKey"
-                                                @click.stop="testServer(server)">测试</a-button>
-                                            <a-button v-if="isServerBusy(server)" size="small" type="danger" icon="close"
-                                                @click.stop="cancelConnect">取消</a-button>
-                                            <a-button v-else size="small" type="primary" icon="api" :disabled="connectBusy || server.localPing < 0"
-                                                @click.stop="connectServer(server)">连接</a-button>
-                                        </a-space>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
+        <div class="vpngate-progress" v-if="connectionActive">
+            <a-progress :percent="vpngateModal.connectStatus.progress || 0" :status="progressStatus"></a-progress>
+            <div class="vpngate-status-line">
+                <span>[[ vpngateModal.connectStatus.message ]]</span>
+                <span v-if="vpngateModal.connectStatus.tunIP" class="vpngate-mono">[[ vpngateModal.connectStatus.tunDev ]] · [[ vpngateModal.connectStatus.tunIP ]]</span>
+            </div>
+            <a-button v-if="canCancel" size="small" type="danger" icon="close" @click="cancelConnect">取消</a-button>
         </div>
+    </div>
+
+    <div class="vpngate-panel">
+        <div class="vpngate-settings-row">
+            <div class="vpngate-setting">
+                <small>连接模式</small>
+                <a-radio-group v-model="vpngateModal.ruleMode" button-style="solid" size="small" @change="onRuleModeChanged">
+                    <a-radio-button value="default">自动</a-radio-button>
+                    <a-radio-button value="fixed">固定国家</a-radio-button>
+                </a-radio-group>
+            </div>
+            <div class="vpngate-setting vpngate-switch-line">
+                <small>自动切换</small>
+                <a-switch v-model="vpngateModal.fallbackEnable" checked-children="开" un-checked-children="关" @change="saveVPNGateSettings"></a-switch>
+            </div>
+            <a-button type="danger" icon="delete" @click="uninstallVPNGate" :loading="vpngateModal.confirmLoading">移除</a-button>
+        </div>
+
+        <div v-if="vpngateModal.ruleMode === 'fixed'" :style="{ marginBottom: '12px' }">
+            <a-select
+                mode="multiple"
+                v-model="vpngateModal.selectedCountries"
+                :dropdown-class-name="themeSwitcher.currentTheme"
+                placeholder="选择要连接的国家/地区"
+                :style="{ width: '100%' }"
+                @change="onRuleModeChanged">
+                <a-select-option v-for="country in countryOptions" :key="country.value" :value="country.value">
+                    <span class="vpngate-country-label">[[ country.label ]]</span>
+                </a-select-option>
+            </a-select>
+        </div>
+
+        <a-alert v-if="vpngateModal.servers.length === 0" type="info" show-icon
+            message="暂无节点，点击重新获取" :style="{ marginTop: '8px' }"></a-alert>
+        <a-alert v-else-if="selectedServers.length === 0" type="warning" show-icon
+            message="当前模式没有可用节点" :style="{ marginTop: '8px' }"></a-alert>
+        <div v-else class="vpngate-table-wrap">
+            <table class="vpngate-table">
+                <thead>
+                    <tr>
+                        <th>国家</th>
+                        <th>延迟</th>
+                        <th>IP 类型</th>
+                        <th>ASN</th>
+                        <th>节点 IP</th>
+                        <th style="width: 150px; text-align: right;">操作</th>
+                    </tr>
+                </thead>
+                <tbody v-for="group in groupedServers" :key="group.countryLong">
+                    <tr class="vpngate-country-header" @click="toggleCountryCollapse(group.countryLong)"
+                        :title="group.countryLong + '，' + group.servers.length + ' 个节点'">
+                        <td colspan="6">
+                            <div class="vpngate-country-row">
+                                <div class="vpngate-country-name">
+                                    <a-icon :type="isCountryCollapsed(group.countryLong) ? 'right' : 'down'"></a-icon>
+                                    <span class="vpngate-country-label">[[ group.countryLong ]]</span>
+                                </div>
+                                <a-tag color="cyan">[[ group.servers.length ]]</a-tag>
+                            </div>
+                        </td>
+                    </tr>
+                    <template v-if="!isCountryCollapsed(group.countryLong)">
+                        <tr v-for="server in group.servers" :key="group.countryLong + server.hostName + server.ip">
+                            <td>
+                                <span class="vpngate-country-label">[[ server.countryLong ]]</span>
+                            </td>
+                            <td>
+                                <span :class="pingClass(server.localPing)">[[ formatPing(server.localPing) ]]</span>
+                            </td>
+                            <td>
+                                <a-tag :color="server.ipType === '住宅IP' ? 'green' : (server.ipType === '机房IP' ? 'orange' : 'default')">
+                                    [[ server.ipType ]]
+                                </a-tag>
+                            </td>
+                            <td class="vpngate-mono">[[ server.asn ]]</td>
+                            <td class="vpngate-mono">[[ server.ip ]]</td>
+                            <td style="text-align: right;">
+                                <a-space>
+                                    <a-button size="small" icon="thunderbolt" :loading="isTestingServer(server)" :disabled="connectBusy || !!vpngateModal.testingNodeKey"
+                                        @click.stop="testServer(server)">测试</a-button>
+                                    <a-button v-if="isServerBusy(server)" size="small" type="danger" icon="close"
+                                        @click.stop="cancelConnect">取消</a-button>
+                                    <a-button v-else size="small" type="primary" icon="api" :disabled="connectBusy"
+                                        @click.stop="connectServer(server)">连接</a-button>
+                                </a-space>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </a-modal>
 
 <script>
@@ -166,7 +157,6 @@
         selectedCountries: [],
         refreshInterval: 120,
         fallbackEnable: true,
-        showUnavailable: false,
         testingNodeKey: '',
         collapsedCountries: {},
         connectStatus: {
@@ -223,19 +213,39 @@
                 }
                 return vpngateModal.servers.filter(server => vpngateModal.selectedCountries.includes(server.countryShort) && server.localPing >= 0);
             },
-            candidateServers() {
-                return this.selectedServers;
-            },
-            backupServers() {
-                const currentIP = (vpngateModal.connectStatus.server && vpngateModal.connectStatus.server.ip) || (this.bestServer && this.bestServer.ip);
-                return this.candidateServers.filter(server => server.ip !== currentIP).slice(0, 3);
-            },
             bestServer() {
                 const pool = this.selectedServers.length > 0 ? this.selectedServers : [];
                 return pool.slice().sort((a, b) => this.pingRank(a.localPing) - this.pingRank(b.localPing))[0] || null;
             },
             displayServer() {
                 return vpngateModal.connectStatus.server || this.bestServer;
+            },
+            currentCountry() {
+                return this.displayServer ? this.displayServer.countryLong : '未选择节点';
+            },
+            currentNodeIP() {
+                return this.displayServer ? this.displayServer.ip : '—';
+            },
+            currentMetricPing() {
+                return this.displayServer ? this.displayServer.localPing : -1;
+            },
+            currentPingText() {
+                return this.displayServer ? this.formatPing(this.displayServer.localPing) : '—';
+            },
+            currentIPType() {
+                return this.displayServer && this.displayServer.ipType ? this.displayServer.ipType : '—';
+            },
+            currentASN() {
+                return this.displayServer && this.displayServer.asn ? this.displayServer.asn : '—';
+            },
+            totalNodeCount() {
+                return vpngateModal.servers.length;
+            },
+            availableNodeCount() {
+                return vpngateModal.servers.filter(server => server.localPing >= 0).length;
+            },
+            failedNodeCount() {
+                return Math.max(0, this.totalNodeCount - this.availableNodeCount);
             },
             emptySelectionHint() {
                 if (vpngateModal.ruleMode === 'fixed' && vpngateModal.selectedCountries.length === 0) {
@@ -252,11 +262,11 @@
             needsCountry() {
                 return vpngateModal.ruleMode === 'fixed' && vpngateModal.selectedCountries.length === 0;
             },
-            ruleName() {
+            shortRuleName() {
                 return {
-                    default: '自动连接',
-                    fixed: '国家连接',
-                }[vpngateModal.ruleMode];
+                    default: '自动',
+                    fixed: '固定国家',
+                }[vpngateModal.ruleMode] || '自动';
             },
             statusName() {
                 return {
@@ -302,13 +312,12 @@
             },
             groupedServers() {
                 const groups = {};
-                vpngateModal.servers.forEach(server => {
+                this.selectedServers.forEach(server => {
                     const country = server.countryLong;
                     if (!groups[country]) {
                         groups[country] = {
                             countryLong: server.countryLong,
                             countryShort: server.countryShort,
-                            countryShortLower: server.countryShortLower,
                             servers: [],
                         };
                     }
@@ -337,7 +346,7 @@
                 try {
                     const msg = await HttpUtil.post('/panel/xray/vpngate/list', {
                         refresh: refresh ? 'true' : '',
-                        showUnavailable: vpngateModal.showUnavailable ? 'true' : '',
+                        showUnavailable: 'true',
                     });
                     if (msg.success) {
                         vpngateModal.servers = msg.obj || [];
@@ -350,6 +359,9 @@
                 } finally {
                     vpngateModal.loading(false);
                 }
+            },
+            refreshNodes() {
+                return this.create(true);
             },
             async connectVPNGate() {
                 if (this.needsCountry) {
@@ -388,20 +400,9 @@
                 return 0;
             },
             resetCollapsedCountries() {
-                const openCountries = new Set();
-                if (vpngateModal.ruleMode === 'fixed') {
-                    vpngateModal.servers.forEach(server => {
-                        if (vpngateModal.selectedCountries.includes(server.countryShort)) {
-                            openCountries.add(server.countryLong);
-                        }
-                    });
-                }
-                if (openCountries.size === 0 && this.bestServer) {
-                    openCountries.add(this.bestServer.countryLong);
-                }
                 const collMap = {};
                 vpngateModal.servers.forEach(server => {
-                    collMap[server.countryLong] = openCountries.size > 0 ? !openCountries.has(server.countryLong) : false;
+                    collMap[server.countryLong] = true;
                 });
                 vpngateModal.collapsedCountries = collMap;
             },
@@ -421,7 +422,11 @@
             },
             async initModal() {
                 await this.loadVPNGateSettings();
-                await this.create();
+                if (vpngateModal.servers.length === 0) {
+                    await this.create(false);
+                } else {
+                    this.resetCollapsedCountries();
+                }
                 this.refreshConnectStatus();
             },
             async refreshConnectStatus() {
@@ -552,6 +557,7 @@
                     if (msg.success) {
                         this.setConnectStatus(msg.obj);
                         this.removeVPNGateOutbound();
+                        this.clearNodes();
                     }
                 } catch (error) {
                     Vue.prototype.$message.error('取消失败');
@@ -566,6 +572,7 @@
                     if (msg.success) {
                         this.setConnectStatus(msg.obj);
                         this.removeVPNGateOutbound();
+                        this.clearNodes();
                         Vue.prototype.$message.success('VPNGate 已断开');
                     }
                 } catch (error) {
@@ -575,7 +582,7 @@
             async uninstallVPNGate() {
                 this.$confirm({
                     title: '确认要移除 VPNGate 吗？',
-                    content: '该操作将断开当前 VPN 连接、删除 VPNGate 出站并清空节点缓存，不会卸载系统 OpenVPN。',
+                    content: '该操作将断开当前 VPN 连接、删除 VPNGate 出站并清空节点缓存。',
                     okText: '确定',
                     okType: 'danger',
                     cancelText: '取消',
@@ -587,7 +594,7 @@
                             if (msg.success) {
                                 Vue.prototype.$message.success('VPNGate 已移除');
                                 this.removeVPNGateOutbound();
-                                vpngateModal.servers = [];
+                                this.clearNodes();
                                 vpngateModal.close();
                             } else {
                                 Vue.prototype.$message.error('移除失败');
@@ -645,6 +652,10 @@
                 } catch (error) {
                     vpngateModal.ruleMode = 'default';
                 }
+            },
+            clearNodes() {
+                vpngateModal.servers = [];
+                vpngateModal.collapsedCountries = {};
             },
             settingsPayload() {
                 return {
