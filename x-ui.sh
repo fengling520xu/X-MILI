@@ -174,11 +174,6 @@ update_menu() {
     fi
 }
 
-legacy_version() {
-    LOGE "Installing upstream legacy versions is disabled for this fork."
-    return 1
-}
-
 # Function to handle the deletion of the script file
 delete_script() {
     rm -f /usr/bin/ml /usr/bin/x-ui
@@ -2570,38 +2565,37 @@ show_menu() {
 │   ${green}1.${plain} 安装                                     │
 │   ${green}2.${plain} 更新                                     │
 │   ${green}3.${plain} 更新菜单                                 │
-│   ${green}4.${plain} 安装旧版本（已禁用）                     │
-│   ${green}5.${plain} 卸载                                     │
+│   ${green}4.${plain} 卸载                                     │
 │────────────────────────────────────────────────│
-│   ${green}6.${plain} 重置用户名和密码                         │
-│   ${green}7.${plain} 重置面板访问路径                         │
-│   ${green}8.${plain} 重置面板设置                             │
-│   ${green}9.${plain} 修改端口                                 │
-│  ${green}10.${plain} 查看当前设置                             │
+│   ${green}5.${plain} 重置用户名和密码                         │
+│   ${green}6.${plain} 重置面板访问路径                         │
+│   ${green}7.${plain} 重置面板设置                             │
+│   ${green}8.${plain} 修改端口                                 │
+│   ${green}9.${plain} 查看当前设置                             │
 │────────────────────────────────────────────────│
-│  ${green}11.${plain} 启动                                     │
-│  ${green}12.${plain} 停止                                     │
-│  ${green}13.${plain} 重启面板                                 │
-|  ${green}14.${plain} 重启 Xray                                │
-│  ${green}15.${plain} 查看状态                                 │
-│  ${green}16.${plain} 日志管理                                 │
+│  ${green}10.${plain} 启动                                     │
+│  ${green}11.${plain} 停止                                     │
+│  ${green}12.${plain} 重启面板                                 │
+|  ${green}13.${plain} 重启 Xray                                │
+│  ${green}14.${plain} 查看状态                                 │
+│  ${green}15.${plain} 日志管理                                 │
 │────────────────────────────────────────────────│
-│  ${green}17.${plain} 开启开机自启                             │
-│  ${green}18.${plain} 关闭开机自启                             │
+│  ${green}16.${plain} 开启开机自启                             │
+│  ${green}17.${plain} 关闭开机自启                             │
 │────────────────────────────────────────────────│
-│  ${green}19.${plain} SSL 证书管理                             │
-│  ${green}20.${plain} Cloudflare SSL 证书                      │
-│  ${green}21.${plain} IP 限制管理                              │
-│  ${green}22.${plain} 防火墙管理                               │
-│  ${green}23.${plain} SSH 端口转发管理                         │
+│  ${green}18.${plain} SSL 证书管理                             │
+│  ${green}19.${plain} Cloudflare SSL 证书                      │
+│  ${green}20.${plain} IP 限制管理                              │
+│  ${green}21.${plain} 防火墙管理                               │
+│  ${green}22.${plain} SSH 端口转发管理                         │
 │────────────────────────────────────────────────│
-│  ${green}24.${plain} 启用 BBR                                 │
-│  ${green}25.${plain} 更新 Geo 文件                            │
-│  ${green}26.${plain} Ookla 测速                               │
+│  ${green}23.${plain} 启用 BBR                                 │
+│  ${green}24.${plain} 更新 Geo 文件                            │
+│  ${green}25.${plain} Ookla 测速                               │
 ╚────────────────────────────────────────────────╝
 "
         show_status
-        echo && read -rp "请输入选项 [0-26]: " num
+        echo && read -rp "请输入选项 [0-25]: " num
     else
     echo -e "
 ╔────────────────────────────────────────────────╗
@@ -2611,38 +2605,37 @@ show_menu() {
 │   ${green}1.${plain} Install                                   │
 │   ${green}2.${plain} Update                                    │
 │   ${green}3.${plain} Update Menu                               │
-│   ${green}4.${plain} Legacy Version                            │
-│   ${green}5.${plain} Uninstall                                 │
+│   ${green}4.${plain} Uninstall                                 │
 │────────────────────────────────────────────────│
-│   ${green}6.${plain} Reset Username & Password                 │
-│   ${green}7.${plain} Reset Web Base Path                       │
-│   ${green}8.${plain} Reset Settings                            │
-│   ${green}9.${plain} Change Port                               │
-│  ${green}10.${plain} View Current Settings                     │
+│   ${green}5.${plain} Reset Username & Password                 │
+│   ${green}6.${plain} Reset Web Base Path                       │
+│   ${green}7.${plain} Reset Settings                            │
+│   ${green}8.${plain} Change Port                               │
+│   ${green}9.${plain} View Current Settings                     │
 │────────────────────────────────────────────────│
-│  ${green}11.${plain} Start                                     │
-│  ${green}12.${plain} Stop                                      │
-│  ${green}13.${plain} Restart                                   │
-|  ${green}14.${plain} Restart Xray                              │
-│  ${green}15.${plain} Check Status                              │
-│  ${green}16.${plain} Logs Management                           │
+│  ${green}10.${plain} Start                                     │
+│  ${green}11.${plain} Stop                                      │
+│  ${green}12.${plain} Restart                                   │
+|  ${green}13.${plain} Restart Xray                              │
+│  ${green}14.${plain} Check Status                              │
+│  ${green}15.${plain} Logs Management                           │
 │────────────────────────────────────────────────│
-│  ${green}17.${plain} Enable Autostart                          │
-│  ${green}18.${plain} Disable Autostart                         │
+│  ${green}16.${plain} Enable Autostart                          │
+│  ${green}17.${plain} Disable Autostart                         │
 │────────────────────────────────────────────────│
-│  ${green}19.${plain} SSL Certificate Management                │
-│  ${green}20.${plain} Cloudflare SSL Certificate                │
-│  ${green}21.${plain} IP Limit Management                       │
-│  ${green}22.${plain} Firewall Management                       │
-│  ${green}23.${plain} SSH Port Forwarding Management            │
+│  ${green}18.${plain} SSL Certificate Management                │
+│  ${green}19.${plain} Cloudflare SSL Certificate                │
+│  ${green}20.${plain} IP Limit Management                       │
+│  ${green}21.${plain} Firewall Management                       │
+│  ${green}22.${plain} SSH Port Forwarding Management            │
 │────────────────────────────────────────────────│
-│  ${green}24.${plain} Enable BBR                                │
-│  ${green}25.${plain} Update Geo Files                          │
-│  ${green}26.${plain} Speedtest by Ookla                        │
+│  ${green}23.${plain} Enable BBR                                │
+│  ${green}24.${plain} Update Geo Files                          │
+│  ${green}25.${plain} Speedtest by Ookla                        │
 ╚────────────────────────────────────────────────╝
 "
     show_status
-    echo && read -rp "Please enter your selection [0-26]: " num
+    echo && read -rp "Please enter your selection [0-25]: " num
     fi
 
     case "${num}" in
@@ -2659,76 +2652,73 @@ show_menu() {
             check_install && update_menu
             ;;
         4)
-            check_install && legacy_version
-            ;;
-        5)
             uninstall
             ;;
-        6)
+        5)
             check_install && reset_user
             ;;
-        7)
+        6)
             check_install && reset_webbasepath
             ;;
-        8)
+        7)
             check_install && reset_config
             ;;
-        9)
+        8)
             check_install && set_port
             ;;
-        10)
+        9)
             check_install && check_config
             ;;
-        11)
+        10)
             check_install && start
             ;;
-        12)
+        11)
             check_install && stop
             ;;
-        13)
+        12)
             check_install && restart
             ;;
-        14)
+        13)
             check_install && restart_xray
             ;;
-        15)
+        14)
             check_install && status
             ;;
-        16)
+        15)
             check_install && show_log
             ;;
-        17)
+        16)
             check_install && enable
             ;;
-        18)
+        17)
             check_install && disable
             ;;
-        19)
+        18)
             ssl_cert_issue_main
             ;;
-        20)
+        19)
             ssl_cert_issue_CF
             ;;
-        21)
+        20)
             iplimit_main
             ;;
-        22)
+        21)
             firewall_menu
             ;;
-        23)
+        22)
             SSH_port_forwarding
             ;;
-        24)
+        23)
             bbr_menu
             ;;
-        25)
+        24)
             update_geo
             ;;
-        26)
+        25)
             run_speedtest
             ;;
         *)
-            is_zh && LOGE "请输入正确的选项 [0-26]" || LOGE "Please enter the correct number [0-26]"
+            is_zh && LOGE "请输入正确的选项 [0-25]" || LOGE "Please enter the correct number [0-25]"
             ;;
     esac
 }
@@ -2767,9 +2757,6 @@ if [[ $# > 0 ]]; then
             ;;
         "update")
             check_install 0 && update 0
-            ;;
-        "legacy")
-            check_install 0 && legacy_version 0
             ;;
         "install")
             check_uninstall 0 && install 0

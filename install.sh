@@ -39,8 +39,9 @@ is_zh() { [[ "$X_MILI_LANG" == "zh_CN" ]]; }
 install_deps() {
     is_zh && log "正在安装基础依赖和 OpenVPN，包管理器可能需要几分钟..." || log "Installing base dependencies and OpenVPN. Package manager may take a few minutes..."
     if command -v apt-get >/dev/null 2>&1; then
-        apt-get update
-        apt-get install -y ca-certificates curl tar gzip unzip gcc g++ make openssl openvpn
+        is_zh && warn "如果系统自动更新正在运行，将等待 apt/dpkg 锁释放。" || warn "Waiting for apt/dpkg lock if unattended upgrades are running."
+        apt-get -o DPkg::Lock::Timeout=1800 update
+        apt-get -o DPkg::Lock::Timeout=1800 install -y ca-certificates curl tar gzip unzip gcc g++ make openssl openvpn
     elif command -v dnf >/dev/null 2>&1; then
         dnf install -y ca-certificates curl tar gzip unzip gcc gcc-c++ make openssl openvpn
     elif command -v yum >/dev/null 2>&1; then
@@ -301,6 +302,7 @@ tar -xzf "$tmp_dir/source.tar.gz" -C "$tmp_dir/src" --strip-components=1
 
 cd "$tmp_dir/src"
 is_zh && step 6 10 "编译面板程序，低配机器可能需要一会儿" || step 6 10 "Building panel binary, this may take a while on small servers"
+mkdir -p build
 /usr/local/go/bin/go build -ldflags "-w -s" -o build/x-ui main.go
 chmod +x DockerInit.sh
 is_zh && step 7 10 "准备 Xray 核心和运行文件" || step 7 10 "Preparing Xray core and runtime files"
