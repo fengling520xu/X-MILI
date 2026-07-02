@@ -29,8 +29,7 @@ jobs:
         run: |
           docker run --rm --platform "${{ matrix.platform }}" \
             -e GITHUB_SHA="$GITHUB_SHA" \
-            -v "$PWD:/src" -w /src golang:1.26.2-bookworm bash -lc '
-              set -euo pipefail
+            -v "$PWD:/src" -w /src golang:1.26.2-bookworm sh -ec '
               apt-get update
               apt-get install -y --no-install-recommends gcc libc6-dev unzip ca-certificates curl
               rm -rf build dist
@@ -43,6 +42,7 @@ jobs:
               test -x build/x-ui
               test -f build/x-ui.sh
               test -d build/bin
+              test -x "build/bin/xray-linux-${{ matrix.arch }}"
               tar -C build -czf "dist/x-mili-linux-${{ matrix.arch }}.tar.gz" .
             '
 
