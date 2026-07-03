@@ -1,4 +1,18 @@
 {{ template "page/head_start" .}}
+<style>
+  #app.login-app .login-logo-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 22px;
+  }
+
+  #app.login-app .login-logo {
+    width: 82px;
+    height: 82px;
+    object-fit: contain;
+    border-radius: 18px;
+  }
+</style>
 {{ template "page/head_end" .}}
 
 {{ template "page/body_start" .}}
@@ -46,6 +60,9 @@
                 </template>
                 <a-button shape="circle" icon="setting"></a-button>
               </a-popover>
+            </div>
+            <div class="login-logo-section">
+              <img class="login-logo" src="{{ .base_path }}logo.jpg" alt="X-ml">
             </div>
             <a-row type="flex" justify="center">
               <a-col :style="{ width: '100%' }">

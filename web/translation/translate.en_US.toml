@@ -717,6 +717,9 @@
 "getOutboundTrafficError" = "Error getting traffics"
 "resetOutboundTrafficError" = "Error in reset outbound traffics"
 
+[pages.recommend]
+"title" = "Product Recommendations"
+
 [tgbot]
 "keyboardClosed" = "❌ Custom keyboard closed!"
 "noResult" = "❗ No result!"

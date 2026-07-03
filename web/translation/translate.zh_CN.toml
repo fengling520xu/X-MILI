@@ -717,6 +717,9 @@
 "getOutboundTrafficError" = "获取出站流量错误"
 "resetOutboundTrafficError" = "重置出站流量错误"
 
+[pages.recommend]
+"title" = "产品推荐"
+
 [tgbot]
 "keyboardClosed" = "❌ 自定义键盘已关闭！"
 "noResult" = "❗ 没有结果！"
