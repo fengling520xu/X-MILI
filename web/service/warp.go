@@ -253,12 +253,14 @@ func (s *WarpService) CheckAndRepairWarp() {
 	}
 }
 
-func (s *WarpService) RepairWarp() {
+func (s *WarpService) RepairWarp() error {
 	warpMonitorMu.Lock()
 	defer warpMonitorMu.Unlock()
 	if err := s.checkAndRepairWarpLocked(true); err != nil {
 		logger.Warningf("[WARP] Repair failed: %v", err)
+		return err
 	}
+	return nil
 }
 
 func (s *WarpService) checkAndRepairWarpLocked(force bool) error {

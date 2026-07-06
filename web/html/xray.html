@@ -900,6 +900,10 @@
 
           if (msg.success && msg.obj) {
             const result = msg.obj;
+            if (result.outbound && result.outbound.tag === outbound.tag) {
+              this.$set(this.templateSettings.outbounds, index, result.outbound);
+              this.outboundSettings = JSON.stringify(this.templateSettings.outbounds);
+            }
             this.$set(this.outboundTestStates[index], 'result', result);
 
             if (result.success) {

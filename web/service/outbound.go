@@ -123,6 +123,7 @@ type TestOutboundResult struct {
 	Delay      int64  `json:"delay"` // Delay in milliseconds
 	Error      string `json:"error,omitempty"`
 	StatusCode int    `json:"statusCode,omitempty"`
+	Outbound   any    `json:"outbound,omitempty"`
 }
 
 // TestOutbound tests an outbound by creating a temporary xray instance and measuring response time.

@@ -2,8 +2,8 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/mhsanaei/3x-ui/v2/util/common"
 	"github.com/mhsanaei/3x-ui/v2/web/service"
@@ -317,25 +317,39 @@ func (a *XraySettingController) testOutbound(c *gin.Context) {
 	}
 
 	if useLatestManaged && result != nil && !result.Success {
-		a.repairManagedOutboundAfterFailedTest(outboundJSON)
+		if repaired, repairErr := a.repairManagedOutboundAfterFailedTest(outboundJSON); repaired && repairErr == nil {
+			if templateConfig, err := a.SettingService.GetXrayConfigTemplate(); err == nil {
+				outboundJSON, allOutboundsJSON = syncManagedOutboundTestConfig(outboundJSON, allOutboundsJSON, templateConfig)
+				result, err = a.OutboundService.TestOutbound(outboundJSON, testURL, allOutboundsJSON)
+				if err != nil {
+					jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+					return
+				}
+				var latestOutbound map[string]any
+				if json.Unmarshal([]byte(outboundJSON), &latestOutbound) == nil {
+					result.Outbound = latestOutbound
+				}
+			}
+		} else if repairErr != nil {
+			result.Error = fmt.Sprintf("%s; 自动切换失败: %v", result.Error, repairErr)
+		}
 	}
 	jsonObj(c, result, nil)
 }
 
-func (a *XraySettingController) repairManagedOutboundAfterFailedTest(outboundJSON string) {
+func (a *XraySettingController) repairManagedOutboundAfterFailedTest(outboundJSON string) (bool, error) {
 	var outbound map[string]any
 	if err := json.Unmarshal([]byte(outboundJSON), &outbound); err != nil {
-		return
+		return false, err
 	}
 	switch outbound["tag"] {
 	case "warp":
-		go func() {
-			time.Sleep(500 * time.Millisecond)
-			a.WarpService.RepairWarp()
-		}()
+		return true, a.WarpService.RepairWarp()
 	case "vpngate":
 		a.OpenVPNService.CheckAndRepairVPNGate()
+		return false, nil
 	}
+	return false, nil
 }
 
 func syncManagedOutboundTestConfig(outboundJSON, allOutboundsJSON, templateConfig string) (string, string) {
