@@ -30,7 +30,7 @@ X-MILI 是一个简洁版代理面板：
 
 | 推荐 | 适合人群 | 亮点 | 入口 |
 | --- | --- | --- | --- |
-| BandwagonHost 搬瓦工 | 更看重线路、延迟和长期稳定的用户 | 三网优化线路，适合长期使用 | [立即查看](https://bandwagonhost.com/aff.php?aff=81790) |
+| 搬 瓦 工 | 更看重线路、延迟和长期稳定的用户 | CN2 GIA 三网优化线路 | [立即查看](https://bandwagonhost.com/aff.php?aff=81790) |
 | RackNerd | 更看重低成本和大流量的用户 | 价格低、流量多，适合测试和入门 | [立即查看](https://my.racknerd.com/aff.php?aff=18708) |
 
 ## 一键安装
