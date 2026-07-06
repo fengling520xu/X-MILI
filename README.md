@@ -1,141 +1,147 @@
 # X-MILI
 
-X-MILI 是基于 3X-UI 改造的简化面板版本，保留代理面板的核心管理能力，并加入 VPNGate/OpenVPN 一键连接能力。
+> 基于 3X-UI 精简改造的 Xray 面板，内置 VPNGate 公益节点出站，适合想快速搭建、分流和管理代理节点的 VPS 用户。
 
-GitHub 地址：
+[![GitHub](https://img.shields.io/badge/GitHub-X--MILI-black?style=for-the-badge&logo=github)](https://github.com/Aimilibot/X-MILI)
+[![一键安装](https://img.shields.io/badge/一键安装-Linux_VPS-brightgreen?style=for-the-badge)](#一键安装)
+[![Docker](https://img.shields.io/badge/Docker-支持-blue?style=for-the-badge&logo=docker)](#docker-版)
+[![Telegram](https://img.shields.io/badge/TG交流群-arestemple-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/arestemple)
 
-```text
-https://github.com/Aimilibot/X-MILI.git
-```
+## 项目介绍
 
-## 主要功能
+X-MILI 是一个简洁版代理面板：
 
-- 面板登录、用户密码、双因素认证
-- 入站管理和客户端管理
-- 客户端流量统计、到期时间、流量上限
-- 按小时、天、周、月自动重置流量
-- Xray 出站、路由、DNS 配置
-- 出站延迟测试和出站流量统计
-- 数据库备份和恢复
-- Xray 启停、日志查看、配置查看
-- VPNGate/OpenVPN 一键连接并生成 `vpngate` 出站
+- 基于 3X-UI，保留常用面板管理能力
+- 基于 Xray，支持入站、出站、路由、DNS、证书和日志管理
+- 新增 VPNGate/OpenVPN 公益节点出站
+- 支持 `vpngate` 标签分流，只有匹配规则的流量才走 VPNGate
+- 提供 `ml` 中文管理菜单，安装、更新、重启、日志查看更方便
+
+## 致敬开源
+
+[![3X-UI](https://img.shields.io/badge/3X--UI-面板项目-blue?style=for-the-badge)](https://github.com/MHSanaei/3x-ui)
+[![Xray](https://img.shields.io/badge/Xray-代理内核-green?style=for-the-badge)](https://github.com/xtls/xray-core)
+[![VPNGate](https://img.shields.io/badge/VPNGate-公益节点-red?style=for-the-badge)](https://www.vpngate.net/cn/)
+[![aimili-vpngate](https://img.shields.io/badge/aimili--vpngate-分流逻辑-orange?style=for-the-badge)](https://github.com/baoweise-bot/aimili-vpngate)
+
+## VPS 推荐
+
+跑 X-MILI 推荐使用支持 TUN/TAP 的 KVM VPS。
+
+| 推荐 | 适合人群 | 亮点 | 入口 |
+| --- | --- | --- | --- |
+| BandwagonHost 搬瓦工 | 更看重线路、延迟和长期稳定的用户 | 三网优化线路，适合长期使用 | [立即查看](https://bandwagonhost.com/aff.php?aff=81790) |
+| RackNerd | 更看重低成本和大流量的用户 | 价格低、流量多，适合测试和入门 | [立即查看](https://my.racknerd.com/aff.php?aff=18708) |
 
 ## 一键安装
 
-Linux VPS 使用 root 执行：
+### 宿主机版
+
+推荐生产环境使用，VPNGate/OpenVPN 路由更稳定。
+
+| 项目 | 说明 |
+| --- | --- |
+| 支持系统 | Debian、Ubuntu、CentOS、RHEL、Rocky Linux、AlmaLinux、Fedora、Amazon Linux、Oracle Linux、Arch、Manjaro、Alpine、openSUSE 等常见 Linux |
+| 必要条件 | root、systemd、TUN/TAP |
+| 适合场景 | 长期运行、生产使用、路由稳定优先 |
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/Aimilibot/X-MILI/main/install.sh)
 ```
 
-安装完成后使用：
+### Docker 版
 
-```bash
-ml
-```
+适合快速部署、隔离运行和保留数据目录。
 
-首次打开菜单会提示选择语言：
-
-```text
-1. English
-2. 简体中文
-```
-
-## 一键更新
-
-```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Aimilibot/X-MILI/main/update.sh)
-```
-
-更新菜单脚本：
-
-```bash
-ml
-```
-
-然后选择 `更新菜单`。
-
-## VPNGate/OpenVPN 一键连接
-
-面板已集成 VPNGate 节点列表和 OpenVPN 托管连接。
-
-使用流程：
-
-1. 进入 `Xray 配置`
-2. 打开 `VPNGate`
-3. 拉取节点列表
-4. 选择默认、固定国家或动态国家规则
-5. 点击添加出站
-6. 面板显示进度：安装 OpenVPN、准备配置、尝试连接、连接成功
-7. 连接成功后会填入 `vpngate` 出站
-8. 保存 Xray 配置
-9. 在路由规则里选择 `vpngate` 出站标签，匹配的流量才会走 OpenVPN
-
-连接过程中可以随时取消。
-
-## 流量套餐示例
-
-每个用户每月 100GB，持续 12 个月：
-
-- 客户端总流量设置为 `100GB`
-- 客户端到期时间设置为 12 个月后
-- 入站流量重置设置为 `每月`
-
-这样客户端每月自动清零流量，到期后自动禁用。
-
-## Docker 运行
-
-推荐使用 Docker 一键脚本，主机会生成 `ml` 管理菜单，用来管理容器：
+| 项目 | 说明 |
+| --- | --- |
+| 支持系统 | 能正常运行 Docker 和 Docker Compose 插件的 Linux VPS |
+| 必要条件 | root、Docker、Docker Compose、TUN/TAP、host 网络 |
+| 适合场景 | 快速重装、容器管理、测试环境 |
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/Aimilibot/X-MILI/main/install-docker.sh)
 ```
 
-常用命令：
+安装完成后，终端会输出面板地址、账号、密码和安全路径。
+
+## 快速教程
+
+1. 执行一键安装脚本。
+2. 选择 `简体中文`。
+3. 设置面板账号、密码、端口和安全路径，也可以直接回车随机生成。
+4. 打开终端输出的面板地址。
+5. 添加入站和客户端。
+6. 进入 `Xray 配置` -> `VPNGate`。
+7. 拉取 VPNGate 节点。
+8. 选择默认、固定国家或动态国家规则。
+9. 点击添加出站，等待 OpenVPN 连接成功。
+10. 保存 Xray 配置。
+11. 在路由规则中选择 `vpngate` 出站标签。
+
+提示：`vpngate` 不会默认接管全部流量，必须在路由规则里手动选择。
+
+## 功能介绍
+
+- 面板登录、随机安全路径、用户密码、双因素认证
+- 入站管理、客户端管理、订阅管理
+- 客户端流量统计、到期时间、流量上限
+- 按小时、天、周、月自动重置流量
+- Xray 出站、路由、DNS、证书、日志管理
+- 出站延迟测试和出站流量统计
+- 数据库备份和恢复
+- 防火墙、IP 限制、BBR、SSH 端口转发
+- VPNGate/OpenVPN 一键连接并生成 `vpngate` 出站
+
+## ml 快捷键
+
+宿主机版：
 
 ```bash
-ml
-ml status
-ml restart
-ml restart-xray
-ml log
+ml                  # 打开菜单
+ml start            # 启动
+ml stop             # 停止
+ml restart          # 重启面板
+ml restart-xray     # 重启 Xray
+ml status           # 查看状态
+ml settings         # 查看设置
+ml log              # 查看日志
+ml update           # 更新
+ml uninstall        # 卸载
 ```
 
-如果手动运行 Docker，VPNGate/OpenVPN 需要 host 网络、TUN 设备和 NET_ADMIN 权限：
+Docker 版：
 
 ```bash
-docker build -t ml .
-docker run -d \
-  --name ml \
-  --network host \
-  --cap-add NET_ADMIN \
-  --device /dev/net/tun:/dev/net/tun \
-  -v ./db:/etc/x-ui \
-  -v ./cert:/root/cert \
-  -e XRAY_VMESS_AEAD_FORCED=false \
-  -e XUI_ENABLE_FAIL2BAN=false \
-  ml
+ml                  # 打开菜单
+ml start            # 启动容器
+ml stop             # 停止容器
+ml restart          # 重启容器
+ml restart-xray     # 重启 Xray
+ml status           # 查看状态
+ml log              # 查看日志
+ml shell            # 进入容器
+ml update           # 更新
+ml uninstall        # 卸载，默认保留数据
 ```
 
-访问：
+## 常见问题
 
-```text
-http://服务器IP:2053
-```
+### 面板打不开
 
-## Linux 宿主机说明
+检查 VPS 安全组和系统防火墙，放行安装完成时输出的面板端口。
 
-VPNGate/OpenVPN 托管连接需要 Linux 环境，并依赖：
+### VPNGate 连接失败
 
-- `openvpn`
-- `iproute2`
-- 系统允许创建 `tun/tap` 设备
-- 进程有权限执行 `ip route` 和 `ip rule`
+确认 VPS 支持 TUN/TAP。OpenVZ/LXC 机器通常需要在服务商控制面板手动开启 TUN。
 
-面板会尝试自动安装 OpenVPN。生产环境建议直接安装在 Linux 宿主机上运行，路由行为更稳定。
+### Docker 版 VPNGate 不工作
 
-## 注意事项
+确认容器使用 host 网络、`/dev/net/tun` 和 `NET_ADMIN`。一键 Docker 脚本已默认配置。
 
-- 原上游面板更新入口已禁用，避免误拉回上游代码。
-- Go 模块路径仍保留原导入路径，用于保证现有代码正常编译。
-- VPNGate 出站只在路由规则选择 `vpngate` 标签时生效，不会默认接管全部流量。
+## 交流与支持
+
+[![Telegram](https://img.shields.io/badge/TG交流群-arestemple-2CA5E0?style=flat-square&logo=telegram&logoColor=white)](https://t.me/arestemple)
+[![Forum](https://img.shields.io/badge/交流论坛-339936.xyz-orange?style=flat-square&logo=discourse&logoColor=white)](https://339936.xyz)
+[![YouTube](https://img.shields.io/badge/视频教程-YouTube-red?style=flat-square&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=s-ATfXR8BpI)
+[![Email](https://img.shields.io/badge/Bug反馈-Email-red?style=flat-square&logo=gmail&logoColor=white)](mailto:yaohunse7@gmail.com)
