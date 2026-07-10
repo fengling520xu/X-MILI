@@ -67,8 +67,18 @@ jobs:
           name: x-mili-linux-amd64
           path: dist/x-mili-linux-amd64.tar.gz
 
-  build-arm64:
-    runs-on: ubuntu-24.04-arm
+build-arm64:
+  runs-on: ubuntu-24.04-arm
+  steps:
+    - name: Install musl toolchain
+      run: sudo apt-get install -y musl-tools
+    - name: Build static
+      env:
+        CC: musl-gcc
+      run: |
+        go build -tags "osusergo,netgo,static_build" \
+          -ldflags "-w -s -linkmode external -extldflags '-static'" \
+          -o build/x-ui main.go
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
