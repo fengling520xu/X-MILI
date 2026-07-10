@@ -9,18 +9,24 @@ permissions:
   contents: write
 
 jobs:
-  build-amd64:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+          - arch: arm64
+            platform: linux/arm64
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23.8'
-          cache: true
-          cache-dependency-path: go.sum
-      - name: Pin deps to avoid x/exp 2026
+      - uses: docker/setup-qemu-action@v3
+      - name: Build ${{ matrix.arch }}
         run: |
-          cat > go.mod <<'MOD'
+          docker run --rm --platform ${{ matrix.platform }} \
+            -v "$PWD:/src" -w /src golang:1.25.4-bullseye sh -ec '
+              cat > go.mod <<MOD
           module github.com/mhsanaei/3x-ui/v2
           go 1.23
           require (
@@ -51,92 +57,24 @@ jobs:
             gorm.io/gorm v1.31.0
           )
           MOD
-          rm -f go.sum
-          go mod tidy
-      - name: Build amd64
-        env:
-          CGO_ENABLED: 1
-          GOPROXY: https://goproxy.cn,https://goproxy.io,direct
-          GOTOOLCHAIN: local
-        run: |
-          rm -rf build dist && mkdir -p build dist
-          go mod download
-          go build -ldflags "-w -s" -o build/x-ui main.go
-          chmod +x DockerInit.sh
-          ./DockerInit.sh amd64
-          cp x-ui.sh build/x-ui.sh
-          echo "$GITHUB_SHA" > build/.x-mili-commit
-          tar -C build -czf "dist/x-mili-linux-amd64.tar.gz" .
+              rm -f go.sum
+              go env -w GOPROXY=https://goproxy.cn,https://goproxy.io,direct
+              go mod tidy
+              rm -rf build dist && mkdir -p build dist
+              CGO_ENABLED=1 go build -ldflags "-w -s" -o build/x-ui main.go
+              chmod +x DockerInit.sh
+              ./DockerInit.sh ${{ matrix.arch }}
+              cp x-ui.sh build/x-ui.sh
+              echo "$GITHUB_SHA" > build/.x-mili-commit
+              tar -C build -czf "dist/x-mili-linux-${{ matrix.arch }}.tar.gz" .
+            '
       - uses: actions/upload-artifact@v4
         with:
-          name: x-mili-linux-amd64
-          path: dist/x-mili-linux-amd64.tar.gz
-
-  build-arm64:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23.8'
-          cache: true
-          cache-dependency-path: go.sum
-      - name: Pin deps
-        run: |
-          cat > go.mod <<'MOD'
-          module github.com/mhsanaei/3x-ui/v2
-          go 1.23
-          require (
-            github.com/gin-contrib/gzip v1.2.6
-            github.com/gin-contrib/sessions v1.1.0
-            github.com/gin-gonic/gin v1.10.0
-            github.com/goccy/go-json v0.10.6
-            github.com/goccy/go-yaml v1.19.2
-            github.com/google/uuid v1.6.0
-            github.com/gorilla/websocket v1.5.3
-            github.com/joho/godotenv v1.5.1
-            github.com/nicksnyder/go-i18n/v2 v2.6.1
-            github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
-            github.com/pelletier/go-toml/v2 v2.3.1
-            github.com/robfig/cron/v3 v3.0.1
-            github.com/shirou/gopsutil/v4 v4.26.4
-            github.com/valyala/fasthttp v1.70.0
-            github.com/xlzd/gotp v0.1.0
-            github.com/xtls/xray-core v1.8.24
-            go.uber.org/atomic v1.11.0
-            golang.org/x/crypto v0.32.0
-            golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-            golang.org/x/sync v0.11.0
-            golang.org/x/sys v0.32.0
-            golang.org/x/text v0.22.0
-            google.golang.org/grpc v1.68.0
-            gorm.io/driver/sqlite v1.6.0
-            gorm.io/gorm v1.31.0
-          )
-          MOD
-          rm -f go.sum
-          go mod tidy
-      - name: Build arm64 native (no qemu)
-        env:
-          CGO_ENABLED: 1
-          GOPROXY: https://goproxy.cn,https://goproxy.io,direct
-          GOTOOLCHAIN: local
-        run: |
-          rm -rf build dist && mkdir -p build dist
-          go mod download
-          go build -ldflags "-w -s" -o build/x-ui main.go
-          chmod +x DockerInit.sh
-          ./DockerInit.sh arm64
-          cp x-ui.sh build/x-ui.sh
-          echo "$GITHUB_SHA" > build/.x-mili-commit
-          tar -C build -czf "dist/x-mili-linux-arm64.tar.gz" .
-      - uses: actions/upload-artifact@v4
-        with:
-          name: x-mili-linux-arm64
-          path: dist/x-mili-linux-arm64.tar.gz
+          name: x-mili-linux-${{ matrix.arch }}
+          path: dist/x-mili-linux-${{ matrix.arch }}.tar.gz
 
   publish:
-    needs: [build-amd64, build-arm64]
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -154,5 +92,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -f latest "$GITHUB_SHA"
           git push -f origin latest
-          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest LITE ARM" --notes "fix x/exp stuck, fix openvpn newline" --prerelease
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest LITE ARM" --notes "bullseye for Ubuntu20.04, fix openvpn newline + x/exp stuck" --prerelease
           gh release upload latest dist/x-mili-linux-*.tar.gz --clobber
