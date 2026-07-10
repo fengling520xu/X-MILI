@@ -44,7 +44,7 @@ X-MILI 是一个简洁版代理面板：
 | 适合场景 | 长期运行、生产使用、路由稳定优先 |
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Aimilibot/X-MILI/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/fengling520xu/X-MILI/main/install.sh)
 ```
 
 ### Docker 版
