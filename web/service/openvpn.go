@@ -480,75 +480,7 @@ func (s *OpenVPNService) connectVPNGate(ctx context.Context, taskID int64, serve
 	}
 }
 
-func sanitizeVPNGateOpenVPNConfigLITE(base64Config string) (string, error) {
-    decoded, err := base64.StdEncoding.DecodeString(base64Config)
-    if err != nil {
-        return "", err
-    }
-    blocked := map[string]bool{
-        "askpass": true, "auth-user-pass-verify": true, "cd": true,
-        "client-connect": true, "client-disconnect": true, "daemon": true,
-        "down": true, "ipchange": true, "learn-address": true,
-        "log": true, "log-append": true, "management": true,
-        "plugin": true, "route-pre-down": true, "route-up": true,
-        "script-security": true, "status": true, "tls-verify": true,
-        "up": true, "writepid": true,
-        "redirect-gateway": true, "route": true, "route-ipv6": true,
-        "dhcp-option": true, "setenv": true, "setenv-safe": true,
-        "up-delay": true, "allow-recursive-routing": true,
-        "ifconfig": true, "ifconfig-ipv6": true,
-    }
-    var out []string
-    inInline := false
-    scanner := bufio.NewScanner(bytes.NewReader(decoded))
-    scanner.Buffer(make([]byte, 64*1024), 512*1024)
-    for scanner.Scan() {
-        raw := scanner.Text()
-        trim := strings.TrimSpace(raw)
-        lower := strings.ToLower(trim)
-        if strings.HasPrefix(lower, "</") {
-            if inInline { out = append(out, raw) }
-            inInline = false
-            continue
-        }
-        if strings.HasPrefix(lower, "<") && strings.HasSuffix(lower, ">") {
-            tag := strings.Trim(lower, "<> ")
-            if tag == "ca" || tag == "cert" || tag == "key" || tag == "tls-auth" || tag == "key-direction" {
-                inInline = true
-                out = append(out, raw)
-            }
-            continue
-        }
-        if inInline {
-            if len(raw) > 8192 { continue }
-            out = append(out, raw)
-            continue
-        }
-        if trim == "" || strings.HasPrefix(trim, "#") || strings.HasPrefix(trim, ";") { continue }
-        fields := strings.Fields(trim)
-        if len(fields) == 0 { continue }
-        name := strings.ToLower(fields[0])
-        if blocked[name] { continue }
-        out = append(out, trim)
-    }
-    if err := scanner.Err(); err != nil { return "", err }
-    forced := []string{
-        "route-nopull",
-        "script-security 0",
-        "auth-nocache",
-        "verb 3",
-        "nobind",
-        "persist-key",
-        "persist-tun",
-        "resolv-retry infinite",
-        "explicit-exit-notify 0",
-    }
-    out = append(out, forced...)
-    return strings.Join(out, "\n") + "\n", nil
-}
-func sanitizeVPNGateOpenVPNConfig(base64Config string) (string, error) {
-    return sanitizeVPNGateOpenVPNConfigLITE(base64Config)
-}
+
 
 
 func ensureOpenVPNInstalled(ctx context.Context, taskID int64) error {
