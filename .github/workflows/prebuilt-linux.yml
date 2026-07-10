@@ -17,9 +17,14 @@ jobs:
         with:
           go-version: '1.23.8'
           cache: true
-      - name: Build amd64
+      - name: Install musl toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+      - name: Build amd64 static (musl)
         env:
           CGO_ENABLED: 1
+          CC: musl-gcc
           GOPROXY: https://goproxy.cn,https://goproxy.io,direct
         run: |
           cat > go.mod <<'MOD'
@@ -56,7 +61,11 @@ jobs:
           rm -f go.sum
           go mod tidy
           rm -rf build dist && mkdir -p build dist
-          go build -ldflags "-w -s" -o build/x-ui main.go
+          # 静态编译: 兼容所有 Linux 发行版 (包括 glibc 2.17+)
+          go build -tags "osusergo,netgo,static_build" \
+            -ldflags "-w -s -linkmode external -extldflags '-static'" \
+            -o build/x-ui main.go
+          file build/x-ui
           chmod +x DockerInit.sh
           ./DockerInit.sh amd64
           cp x-ui.sh build/x-ui.sh
@@ -67,27 +76,22 @@ jobs:
           name: x-mili-linux-amd64
           path: dist/x-mili-linux-amd64.tar.gz
 
-build-arm64:
-  runs-on: ubuntu-24.04-arm
-  steps:
-    - name: Install musl toolchain
-      run: sudo apt-get install -y musl-tools
-    - name: Build static
-      env:
-        CC: musl-gcc
-      run: |
-        go build -tags "osusergo,netgo,static_build" \
-          -ldflags "-w -s -linkmode external -extldflags '-static'" \
-          -o build/x-ui main.go
+  build-arm64:
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.8'
           cache: true
-      - name: Build arm64 native (no qemu)
+      - name: Install musl toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+      - name: Build arm64 static (musl)
         env:
           CGO_ENABLED: 1
+          CC: musl-gcc
           GOPROXY: https://goproxy.cn,https://goproxy.io,direct
         run: |
           cat > go.mod <<'MOD'
@@ -124,7 +128,12 @@ build-arm64:
           rm -f go.sum
           go mod tidy
           rm -rf build dist && mkdir -p build dist
-          go build -ldflags "-w -s" -o build/x-ui main.go
+          # 静态编译: 兼容所有 Linux 发行版 (包括 glibc 2.17+)
+          go build -tags "osusergo,netgo,static_build" \
+            -ldflags "-w -s -linkmode external -extldflags '-static'" \
+            -o build/x-ui main.go
+          # 验证: 应显示 "statically linked"
+          file build/x-ui
           chmod +x DockerInit.sh
           ./DockerInit.sh arm64
           cp x-ui.sh build/x-ui.sh
@@ -154,5 +163,5 @@ build-arm64:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -f latest "$GITHUB_SHA"
           git push -f origin latest
-          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest LITE ARM" --notes "native arm runner, fix x/exp stuck, fix openvpn newline" --prerelease
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest LITE ARM" --notes "static build, compatible with all Linux distros" --prerelease
           gh release upload latest dist/x-mili-linux-*.tar.gz --clobber
