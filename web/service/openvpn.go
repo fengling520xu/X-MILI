@@ -485,16 +485,6 @@ func sanitizeVPNGateOpenVPNConfigLITE(base64Config string) (string, error) {
     if err != nil {
         return "", err
     }
-    safe := map[string]bool{
-        "client": true, "dev": true, "dev-type": true, "proto": true,
-        "remote": true, "rport": true, "lport": true, "nobind": true,
-        "persist-key": true, "persist-tun": true, "verb": true,
-        "mute": true, "keepalive": true, "ping": true, "ping-restart": true,
-        "resolv-retry": true, "comp-lzo": true, "compress": true,
-        "cipher": true, "auth": true, "tls-client": true,
-        "remote-cert-tls": true, "reneg-sec": true, "crl-verify": true,
-        "explicit-exit-notify": true, "fast-io": true,
-    }
     blocked := map[string]bool{
         "askpass": true, "auth-user-pass-verify": true, "cd": true,
         "client-connect": true, "client-disconnect": true, "daemon": true,
