@@ -26,13 +26,6 @@ const (
 	vpnGateOutboundTag = "vpngate"
 	vpnGateRouteTable  = "10077"
 	vpnGateFailedTTL   = 30 * time.Minute
-	maxFailedUntilSize = 200
-	maxOpenVPNLogLines = 50
-)
-
-// LITE duplicate const removed
-	vpnGateRouteTable  = "10077"
-	vpnGateFailedTTL   = 30 * time.Minute
 )
 
 type OpenVPNService struct{}
@@ -95,29 +88,6 @@ func normalizeVPNGateRuleMode(ruleMode string) string {
 	}
 }
 
-func gcFailedUntilLocked() {
-    if len(vpnGateOpenVPN.failedUntil) <= 200 {
-        now := time.Now()
-        for ip, until := range vpnGateOpenVPN.failedUntil {
-            if now.After(until) {
-                delete(vpnGateOpenVPN.failedUntil, ip)
-            }
-        }
-        return
-    }
-    type kv struct{ip string;until time.Time}
-    list := make([]kv, 0, len(vpnGateOpenVPN.failedUntil))
-    for ip, until := range vpnGateOpenVPN.failedUntil { list = append(list, kv{ip, until}) }
-    // sort and keep half
-    // simplified GC
-    newMap := make(map[string]time.Time)
-    cnt := 0
-    for ip, until := range vpnGateOpenVPN.failedUntil {
-        if cnt < 100 { newMap[ip]=until; cnt++ }
-    }
-    vpnGateOpenVPN.failedUntil = newMap
-}
-
 func (s *OpenVPNService) StartVPNGate(server VPNGateServer, ruleMode string, selectedCountries []string, fallbackEnable bool) (*OpenVPNStatus, error) {
 	if server.OpenVPNConfig == "" {
 		return nil, errors.New("OpenVPN config is empty")
@@ -137,7 +107,6 @@ func (s *OpenVPNService) StartVPNGate(server VPNGateServer, ruleMode string, sel
 	if vpnGateOpenVPN.failedUntil == nil {
 		vpnGateOpenVPN.failedUntil = map[string]time.Time{}
 	}
-	gcFailedUntilLocked()
 	vpnGateOpenVPN.status = OpenVPNStatus{
 		Phase:    "installing",
 		Progress: 8,
@@ -511,7 +480,6 @@ func (s *OpenVPNService) connectVPNGate(ctx context.Context, taskID int64, serve
 	}
 }
 
-
 func sanitizeVPNGateOpenVPNConfigLITE(base64Config string) (string, error) {
     decoded, err := base64.StdEncoding.DecodeString(base64Config)
     if err != nil {
@@ -587,9 +555,7 @@ func sanitizeVPNGateOpenVPNConfigLITE(base64Config string) (string, error) {
         "explicit-exit-notify 0",
     }
     out = append(out, forced...)
-    return strings.Join(out, "
-") + "
-", nil
+    return strings.Join(out, "\n") + "\n", nil
 }
 func sanitizeVPNGateOpenVPNConfig(base64Config string) (string, error) {
     return sanitizeVPNGateOpenVPNConfigLITE(base64Config)
@@ -859,7 +825,6 @@ func handleVPNGateNodeFailure(taskID int64, server VPNGateServer, message string
 	if vpnGateOpenVPN.failedUntil == nil {
 		vpnGateOpenVPN.failedUntil = map[string]time.Time{}
 	}
-	gcFailedUntilLocked()
 	if server.IP != "" {
 		vpnGateOpenVPN.failedUntil[server.IP] = time.Now().Add(vpnGateFailedTTL)
 	}
@@ -1050,7 +1015,6 @@ func triggerVPNGateFailover(taskID int64) {
 	if vpnGateOpenVPN.failedUntil == nil {
 		vpnGateOpenVPN.failedUntil = map[string]time.Time{}
 	}
-	gcFailedUntilLocked()
 	if currentServer != nil && currentServer.IP != "" {
 		vpnGateOpenVPN.failedUntil[currentServer.IP] = time.Now().Add(vpnGateFailedTTL)
 	}
