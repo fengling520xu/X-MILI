@@ -30,9 +30,7 @@ const (
 	maxOpenVPNLogLines = 50
 )
 
-const (
-	vpnGateOutboundTag2 = "vpngate"
-
+// LITE duplicate const removed
 	vpnGateRouteTable  = "10077"
 	vpnGateFailedTTL   = 30 * time.Minute
 )
@@ -97,6 +95,29 @@ func normalizeVPNGateRuleMode(ruleMode string) string {
 	}
 }
 
+func gcFailedUntilLocked() {
+    if len(vpnGateOpenVPN.failedUntil) <= 200 {
+        now := time.Now()
+        for ip, until := range vpnGateOpenVPN.failedUntil {
+            if now.After(until) {
+                delete(vpnGateOpenVPN.failedUntil, ip)
+            }
+        }
+        return
+    }
+    type kv struct{ip string;until time.Time}
+    list := make([]kv, 0, len(vpnGateOpenVPN.failedUntil))
+    for ip, until := range vpnGateOpenVPN.failedUntil { list = append(list, kv{ip, until}) }
+    // sort and keep half
+    // simplified GC
+    newMap := make(map[string]time.Time)
+    cnt := 0
+    for ip, until := range vpnGateOpenVPN.failedUntil {
+        if cnt < 100 { newMap[ip]=until; cnt++ }
+    }
+    vpnGateOpenVPN.failedUntil = newMap
+}
+
 func (s *OpenVPNService) StartVPNGate(server VPNGateServer, ruleMode string, selectedCountries []string, fallbackEnable bool) (*OpenVPNStatus, error) {
 	if server.OpenVPNConfig == "" {
 		return nil, errors.New("OpenVPN config is empty")
@@ -116,6 +137,7 @@ func (s *OpenVPNService) StartVPNGate(server VPNGateServer, ruleMode string, sel
 	if vpnGateOpenVPN.failedUntil == nil {
 		vpnGateOpenVPN.failedUntil = map[string]time.Time{}
 	}
+	gcFailedUntilLocked()
 	vpnGateOpenVPN.status = OpenVPNStatus{
 		Phase:    "installing",
 		Progress: 8,
@@ -491,86 +513,86 @@ func (s *OpenVPNService) connectVPNGate(ctx context.Context, taskID int64, serve
 
 
 func sanitizeVPNGateOpenVPNConfigLITE(base64Config string) (string, error) {
-	decoded, err := base64.StdEncoding.DecodeString(base64Config)
-	if err != nil {
-		return "", err
-	}
-	safe := map[string]bool{
-		"client": true, "dev": true, "dev-type": true, "proto": true,
-		"remote": true, "rport": true, "lport": true, "nobind": true,
-		"persist-key": true, "persist-tun": true, "verb": true,
-		"mute": true, "keepalive": true, "ping": true, "ping-restart": true,
-		"resolv-retry": true, "comp-lzo": true, "compress": true,
-		"cipher": true, "auth": true, "tls-client": true,
-		"remote-cert-tls": true, "reneg-sec": true, "crl-verify": true,
-		"explicit-exit-notify": true, "fast-io": true,
-	}
-	blocked := map[string]bool{
-		"askpass": true, "auth-user-pass-verify": true, "cd": true,
-		"client-connect": true, "client-disconnect": true, "daemon": true,
-		"down": true, "ipchange": true, "learn-address": true,
-		"log": true, "log-append": true, "management": true,
-		"plugin": true, "route-pre-down": true, "route-up": true,
-		"script-security": true, "status": true, "tls-verify": true,
-		"up": true, "writepid": true,
-		"redirect-gateway": true, "route": true, "route-ipv6": true,
-		"dhcp-option": true, "setenv": true, "setenv-safe": true,
-		"up-delay": true, "allow-recursive-routing": true,
-		"ifconfig": true, "ifconfig-ipv6": true,
-	}
-	var out []string
-	inInline := false
-	scanner := bufio.NewScanner(bytes.NewReader(decoded))
-	scanner.Buffer(make([]byte, 64*1024), 512*1024)
-	for scanner.Scan() {
-		raw := scanner.Text()
-		trim := strings.TrimSpace(raw)
-		lower := strings.ToLower(trim)
-		if strings.HasPrefix(lower, "</") {
-			if inInline { out = append(out, raw) }
-			inInline = false
-			continue
-		}
-		if strings.HasPrefix(lower, "<") && strings.HasSuffix(lower, ">") {
-			tag := strings.Trim(lower, "<> ")
-			if tag == "ca" || tag == "cert" || tag == "key" || tag == "tls-auth" || tag == "key-direction" {
-				inInline = true
-				out = append(out, raw)
-			}
-			continue
-		}
-		if inInline {
-			if len(raw) > 8192 { continue }
-			out = append(out, raw)
-			continue
-		}
-		if trim == "" || strings.HasPrefix(trim, "#") || strings.HasPrefix(trim, ";") { continue }
-		fields := strings.Fields(trim)
-		if len(fields) == 0 { continue }
-		name := strings.ToLower(fields[0])
-		if blocked[name] { continue }
-		if !safe[name] { continue }
-		out = append(out, trim)
-	}
-	if err := scanner.Err(); err != nil { return "", err }
-	forced := []string{
-		"route-nopull",
-		"script-security 0",
-		"auth-nocache",
-		"verb 3",
-		"nobind",
-		"persist-key",
-		"persist-tun",
-		"resolv-retry infinite",
-		"explicit-exit-notify 0",
-	}
-	out = append(out, forced...)
-	return strings.Join(out, "
+    decoded, err := base64.StdEncoding.DecodeString(base64Config)
+    if err != nil {
+        return "", err
+    }
+    safe := map[string]bool{
+        "client": true, "dev": true, "dev-type": true, "proto": true,
+        "remote": true, "rport": true, "lport": true, "nobind": true,
+        "persist-key": true, "persist-tun": true, "verb": true,
+        "mute": true, "keepalive": true, "ping": true, "ping-restart": true,
+        "resolv-retry": true, "comp-lzo": true, "compress": true,
+        "cipher": true, "auth": true, "tls-client": true,
+        "remote-cert-tls": true, "reneg-sec": true, "crl-verify": true,
+        "explicit-exit-notify": true, "fast-io": true,
+    }
+    blocked := map[string]bool{
+        "askpass": true, "auth-user-pass-verify": true, "cd": true,
+        "client-connect": true, "client-disconnect": true, "daemon": true,
+        "down": true, "ipchange": true, "learn-address": true,
+        "log": true, "log-append": true, "management": true,
+        "plugin": true, "route-pre-down": true, "route-up": true,
+        "script-security": true, "status": true, "tls-verify": true,
+        "up": true, "writepid": true,
+        "redirect-gateway": true, "route": true, "route-ipv6": true,
+        "dhcp-option": true, "setenv": true, "setenv-safe": true,
+        "up-delay": true, "allow-recursive-routing": true,
+        "ifconfig": true, "ifconfig-ipv6": true,
+    }
+    var out []string
+    inInline := false
+    scanner := bufio.NewScanner(bytes.NewReader(decoded))
+    scanner.Buffer(make([]byte, 64*1024), 512*1024)
+    for scanner.Scan() {
+        raw := scanner.Text()
+        trim := strings.TrimSpace(raw)
+        lower := strings.ToLower(trim)
+        if strings.HasPrefix(lower, "</") {
+            if inInline { out = append(out, raw) }
+            inInline = false
+            continue
+        }
+        if strings.HasPrefix(lower, "<") && strings.HasSuffix(lower, ">") {
+            tag := strings.Trim(lower, "<> ")
+            if tag == "ca" || tag == "cert" || tag == "key" || tag == "tls-auth" || tag == "key-direction" {
+                inInline = true
+                out = append(out, raw)
+            }
+            continue
+        }
+        if inInline {
+            if len(raw) > 8192 { continue }
+            out = append(out, raw)
+            continue
+        }
+        if trim == "" || strings.HasPrefix(trim, "#") || strings.HasPrefix(trim, ";") { continue }
+        fields := strings.Fields(trim)
+        if len(fields) == 0 { continue }
+        name := strings.ToLower(fields[0])
+        if blocked[name] { continue }
+        if !safe[name] { continue }
+        out = append(out, trim)
+    }
+    if err := scanner.Err(); err != nil { return "", err }
+    forced := []string{
+        "route-nopull",
+        "script-security 0",
+        "auth-nocache",
+        "verb 3",
+        "nobind",
+        "persist-key",
+        "persist-tun",
+        "resolv-retry infinite",
+        "explicit-exit-notify 0",
+    }
+    out = append(out, forced...)
+    return strings.Join(out, "
 ") + "
 ", nil
 }
 func sanitizeVPNGateOpenVPNConfig(base64Config string) (string, error) {
-	return sanitizeVPNGateOpenVPNConfigLITE(base64Config)
+    return sanitizeVPNGateOpenVPNConfigLITE(base64Config)
 }
 
 
@@ -837,6 +859,7 @@ func handleVPNGateNodeFailure(taskID int64, server VPNGateServer, message string
 	if vpnGateOpenVPN.failedUntil == nil {
 		vpnGateOpenVPN.failedUntil = map[string]time.Time{}
 	}
+	gcFailedUntilLocked()
 	if server.IP != "" {
 		vpnGateOpenVPN.failedUntil[server.IP] = time.Now().Add(vpnGateFailedTTL)
 	}
@@ -872,22 +895,22 @@ func (t *openVPNTask) stopLocked() {
 }
 
 func killActiveVPNGateOpenVPN() {
-	killActiveVPNGateOpenVPNLITE("")
+    killActiveVPNGateOpenVPNLITE("")
 }
 func killActiveVPNGateOpenVPNLITE(pidFile string) {
-	if runtime.GOOS != "linux" {
-		return
-	}
-	if pidFile != "" {
-		if data, err := os.ReadFile(pidFile); err == nil {
-			pidStr := strings.TrimSpace(string(data))
-			if pidStr != "" {
-				_ = exec.Command("kill", pidStr).Run()
-				_ = os.Remove(pidFile)
-			}
-		}
-	}
-	_ = exec.Command("pkill", "-f", "vpngate/active.ovpn").Run()
+    if runtime.GOOS != "linux" {
+        return
+    }
+    if pidFile != "" {
+        if data, err := os.ReadFile(pidFile); err == nil {
+            pidStr := strings.TrimSpace(string(data))
+            if pidStr != "" {
+                _ = exec.Command("kill", pidStr).Run()
+                _ = os.Remove(pidFile)
+            }
+        }
+    }
+    _ = exec.Command("pkill", "-f", "vpngate/active.ovpn").Run()
 }
 
 func (t *openVPNTask) addLog(line string) {
@@ -932,21 +955,21 @@ type openVPNLogWriter struct {
 }
 
 func (w *openVPNLogWriter) Write(p []byte) (int, error) {
-	w.Lock()
-	defer w.Unlock()
-	if w.closed {
-		return len(p), nil
-	}
-	if len(w.all) > 10*1024 {
-		if len(w.all) > 5120 {
-			w.all = w.all[len(w.all)-5120:]
-		}
-	}
-	w.buf += string(p)
-	if len(w.buf) > 20*1024 {
-		w.buf = w.buf[len(w.buf)-10*1024:]
-	}
-	for {
+    w.Lock()
+    defer w.Unlock()
+    if w.closed {
+        return len(p), nil
+    }
+    if len(w.all) > 10*1024 {
+        if len(w.all) > 5120 {
+            w.all = w.all[len(w.all)-5120:]
+        }
+    }
+    w.buf += string(p)
+    if len(w.buf) > 20*1024 {
+        w.buf = w.buf[len(w.buf)-10*1024:]
+    }
+    for {
 		i := strings.IndexByte(w.buf, '\n')
 		if i < 0 {
 			break
@@ -1027,6 +1050,7 @@ func triggerVPNGateFailover(taskID int64) {
 	if vpnGateOpenVPN.failedUntil == nil {
 		vpnGateOpenVPN.failedUntil = map[string]time.Time{}
 	}
+	gcFailedUntilLocked()
 	if currentServer != nil && currentServer.IP != "" {
 		vpnGateOpenVPN.failedUntil[currentServer.IP] = time.Now().Add(vpnGateFailedTTL)
 	}
