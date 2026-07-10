@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_NAME="X-MILI"
-REPO="https://github.com/Aimilibot/X-MILI"
+REPO="https://github.com/fengling520xu/X-MILI"
 RAW_BASE="https://raw.githubusercontent.com/Aimilibot/X-MILI/main"
 INSTALL_ROOT="${X_MILI_DOCKER_ROOT:-/opt/x-mili-docker}"
 SRC_DIR="${X_MILI_DOCKER_SOURCE_DIR:-${INSTALL_ROOT}/src}"

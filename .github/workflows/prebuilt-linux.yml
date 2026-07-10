@@ -18,20 +18,14 @@ jobs:
         include:
           - arch: amd64
             platform: linux/amd64
-            xray_arch: 64
-            fname: amd64
           - arch: arm64
             platform: linux/arm64
-            xray_arch: arm64-v8a
-            fname: arm64
           - arch: arm
             platform: linux/arm/v7
-            xray_arch: arm32-v7a
-            fname: arm
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
-      - name: Build ${{ matrix.arch }}
+      - name: Build bundle ${{ matrix.arch }}
         run: |
           docker run --rm --platform "${{ matrix.platform }}" \
             -e GITHUB_SHA="$GITHUB_SHA" \
@@ -43,6 +37,10 @@ jobs:
               ./DockerInit.sh "${{ matrix.arch }}"
               cp x-ui.sh build/x-ui.sh
               echo "$GITHUB_SHA" > build/.x-mili-commit
+              test -x build/x-ui
+              test -f build/x-ui.sh
+              test -d build/bin
+              ls -lh build/bin/
               tar -C build -czf "dist/x-mili-linux-${{ matrix.arch }}.tar.gz" .
             '
       - uses: actions/upload-artifact@v4
@@ -69,5 +67,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -f latest "$GITHUB_SHA"
           git push -f origin latest
-          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest X-MILI LITE ARM" --notes "Auto build amd64+arm64+arm" --prerelease
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest X-MILI LITE ARM" --notes "Auto build: amd64, arm64, arm - LITE low mem/disk, no log files" --prerelease
           gh release upload latest dist/x-mili-linux-*.tar.gz --clobber

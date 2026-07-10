@@ -1,100 +1,55 @@
 package xray
-
 import (
 	"regexp"
 	"runtime"
 	"strings"
-
 	"github.com/mhsanaei/3x-ui/v2/logger"
 )
-
-// NewLogWriter returns a new LogWriter for processing Xray log output.
-func NewLogWriter() *LogWriter {
-	return &LogWriter{}
-}
-
-// LogWriter processes and filters log output from the Xray process, handling crash detection and message filtering.
-type LogWriter struct {
-	lastLine string
-}
-
-// Write processes and filters log output from the Xray process, handling crash detection and message filtering.
+func NewLogWriter() *LogWriter { return &LogWriter{} }
+type LogWriter struct{ lastLine string }
 func (lw *LogWriter) Write(m []byte) (n int, err error) {
-	crashRegex := regexp.MustCompile(`(?i)(panic|exception|stack trace|fatal error)`)
-
-	// Convert the data to a string
 	message := strings.TrimSpace(string(m))
-	msgLowerAll := strings.ToLower(message)
-
-	// Suppress noisy Windows process-kill signal that surfaces as exit status 1
-	if runtime.GOOS == "windows" && strings.Contains(msgLowerAll, "exit status 1") {
-		return len(m), nil
+	if message == "" { return len(m), nil }
+	msgLower := strings.ToLower(message)
+	if runtime.GOOS == "windows" && strings.Contains(msgLower, "exit status 1") { return len(m), nil }
+	if len(message) > 1024 { message = message[:1024] }
+	if strings.Contains(msgLower, "tls handshake error") || strings.Contains(msgLower, "connection ends") {
+		logger.Debug("XRAY: " + message); return len(m), nil
 	}
-
-	// Check if the message contains a crash
+	crashRegex := regexp.MustCompile(`(?i)(panic|exception|stack trace|fatal error)`)
 	if crashRegex.MatchString(message) {
-		logger.Debug("Core crash detected:\n", message)
-		lw.lastLine = message
-		err1 := writeCrashReport(m)
-		if err1 != nil {
-			logger.Error("Unable to write crash report:", err1)
-		}
-		return len(m), nil
+		logger.Error("Core crash detected (no file write in LITE): " + message[:200])
+		lw.lastLine = message; return len(m), nil
 	}
-
 	regex := regexp.MustCompile(`^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{6}) \[([^\]]+)\] (.+)$`)
-	messages := strings.SplitSeq(message, "\n")
-
-	for msg := range messages {
+	for msg := range strings.SplitSeq(message, "\n") {
+		if msg == "" { continue }
 		matches := regex.FindStringSubmatch(msg)
-
 		if len(matches) > 3 {
-			level := matches[2]
-			msgBody := matches[3]
-			msgBodyLower := strings.ToLower(msgBody)
-
-			if strings.Contains(msgBodyLower, "tls handshake error") ||
-				strings.Contains(msgBodyLower, "connection ends") {
-				logger.Debug("XRAY: " + msgBody)
-				lw.lastLine = ""
-				continue
+			level := matches[2]; body := matches[3]
+			if len(body) > 512 { body = body[:512] }
+			lowerBody := strings.ToLower(body)
+			if strings.Contains(lowerBody, "tls handshake error") || strings.Contains(lowerBody, "connection ends") {
+				logger.Debug("XRAY: " + body); continue
 			}
-
-			if strings.Contains(msgBodyLower, "failed") {
-				logger.Error("XRAY: " + msgBody)
+			if strings.Contains(lowerBody, "failed") {
+				logger.Error("XRAY: " + body)
 			} else {
 				switch level {
-				case "Debug":
-					logger.Debug("XRAY: " + msgBody)
-				case "Info":
-					logger.Info("XRAY: " + msgBody)
-				case "Warning":
-					logger.Warning("XRAY: " + msgBody)
-				case "Error":
-					logger.Error("XRAY: " + msgBody)
-				default:
-					logger.Debug("XRAY: " + msg)
+				case "Debug": logger.Debug("XRAY: " + body)
+				case "Info": logger.Info("XRAY: " + body)
+				case "Warning": logger.Warning("XRAY: " + body)
+				case "Error": logger.Error("XRAY: " + body)
+				default: logger.Debug("XRAY: " + msg)
 				}
 			}
-			lw.lastLine = ""
-		} else if msg != "" {
-			msgLower := strings.ToLower(msg)
-
-			if strings.Contains(msgLower, "tls handshake error") ||
-				strings.Contains(msgLower, "connection ends") {
-				logger.Debug("XRAY: " + msg)
-				lw.lastLine = msg
-				continue
-			}
-
-			if strings.Contains(msgLower, "failed") {
+		} else {
+			if strings.Contains(strings.ToLower(msg), "failed") {
 				logger.Error("XRAY: " + msg)
 			} else {
 				logger.Debug("XRAY: " + msg)
 			}
-			lw.lastLine = msg
 		}
 	}
-
 	return len(m), nil
 }

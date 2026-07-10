@@ -26,7 +26,7 @@ type WarpService struct {
 var (
 	warpMonitorMu sync.Mutex
 	// ponytail: global lock is enough; split per managed outbound if writes become hot.
-	managedOutboundMu sync.Mutex
+	managedOutboundMu sync.Mutex // LITE: global xray write lock, short critical
 	// ponytail: debounce post-restart checks; per-tag scheduling if restarts get noisy.
 	managedRecoveryMu        sync.Mutex
 	managedRecoveryScheduled bool

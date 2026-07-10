@@ -317,6 +317,7 @@ func (p *process) Stop() error {
 
 // writeCrashReport writes a crash report to the binary folder with a timestamped filename.
 func writeCrashReport(m []byte) error {
-	crashReportPath := config.GetBinFolderPath() + "/core_crash_" + time.Now().Format("20060102_150405") + ".log"
-	return os.WriteFile(crashReportPath, m, os.ModePerm)
+	if len(m) > 1024 { m = m[:1024] }
+	logger.Errorf("[Xray Crash truncated] %s", string(m))
+	return nil
 }

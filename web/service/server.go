@@ -418,7 +418,7 @@ func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 }
 
 func (s *ServerService) AppendCpuSample(t time.Time, v float64) {
-	const capacity = 9000 // ~5 hours @ 2s interval
+	const capacity = 1000 // LITE: 1000 ~30min
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	p := CPUSample{T: t.Unix(), Cpu: v}
