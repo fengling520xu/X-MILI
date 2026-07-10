@@ -480,8 +480,70 @@ func (s *OpenVPNService) connectVPNGate(ctx context.Context, taskID int64, serve
 	}
 }
 
+func sanitizeVPNGateOpenVPNConfig(base64Config string) (string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(base64Config)
+	if err != nil {
+		return "", err
+	}
+	blocked := map[string]bool{
+		"askpass":               true,
+		"auth-user-pass-verify": true,
+		"cd":                    true,
+		"client-connect":        true,
+		"client-disconnect":     true,
+		"daemon":                true,
+		"down":                  true,
+		"ipchange":              true,
+		"learn-address":         true,
+		"log":                   true,
+		"log-append":            true,
+		"management":            true,
+		"plugin":                true,
+		"route-pre-down":        true,
+		"route-up":              true,
+		"script-security":       true,
+		"status":                true,
+		"tls-verify":            true,
+		"up":                    true,
+		"writepid":              true,
+	}
 
-
+	var out []string
+	inInline := false
+	scanner := bufio.NewScanner(bytes.NewReader(decoded))
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+		lower := strings.ToLower(trimmed)
+		if strings.HasPrefix(lower, "</") {
+			inInline = false
+			out = append(out, line)
+			continue
+		}
+		if strings.HasPrefix(lower, "<") {
+			inInline = true
+			out = append(out, line)
+			continue
+		}
+		if inInline || trimmed == "" || strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, ";") {
+			out = append(out, line)
+			continue
+		}
+		name := strings.ToLower(strings.Fields(trimmed)[0])
+		if blocked[name] {
+			continue
+		}
+		if name == "route-nopull" {
+			continue
+		}
+		out = append(out, line)
+	}
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	out = append(out, "route-nopull")
+	return strings.Join(out, "\n") + "\n", nil
+}
 
 func ensureOpenVPNInstalled(ctx context.Context, taskID int64) error {
 	if _, err := exec.LookPath("openvpn"); err == nil {
@@ -781,22 +843,10 @@ func (t *openVPNTask) stopLocked() {
 }
 
 func killActiveVPNGateOpenVPN() {
-    killActiveVPNGateOpenVPNLITE("")
-}
-func killActiveVPNGateOpenVPNLITE(pidFile string) {
-    if runtime.GOOS != "linux" {
-        return
-    }
-    if pidFile != "" {
-        if data, err := os.ReadFile(pidFile); err == nil {
-            pidStr := strings.TrimSpace(string(data))
-            if pidStr != "" {
-                _ = exec.Command("kill", pidStr).Run()
-                _ = os.Remove(pidFile)
-            }
-        }
-    }
-    _ = exec.Command("pkill", "-f", "vpngate/active.ovpn").Run()
+	if runtime.GOOS != "linux" {
+		return
+	}
+	_ = exec.Command("pkill", "-f", `openvpn .*vpngate/active\.ovpn`).Run()
 }
 
 func (t *openVPNTask) addLog(line string) {
@@ -841,21 +891,13 @@ type openVPNLogWriter struct {
 }
 
 func (w *openVPNLogWriter) Write(p []byte) (int, error) {
-    w.Lock()
-    defer w.Unlock()
-    if w.closed {
-        return len(p), nil
-    }
-    if len(w.all) > 10*1024 {
-        if len(w.all) > 5120 {
-            w.all = w.all[len(w.all)-5120:]
-        }
-    }
-    w.buf += string(p)
-    if len(w.buf) > 20*1024 {
-        w.buf = w.buf[len(w.buf)-10*1024:]
-    }
-    for {
+	w.Lock()
+	defer w.Unlock()
+	if w.closed {
+		return len(p), nil
+	}
+	w.buf += string(p)
+	for {
 		i := strings.IndexByte(w.buf, '\n')
 		if i < 0 {
 			break
