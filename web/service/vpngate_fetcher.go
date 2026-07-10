@@ -64,7 +64,7 @@ func fetchVPNGateIPDataLite(ctx context.Context,servers []VPNGateServer)map[stri
 		go func(b []string){
 			defer wg.Done();defer func(){<-sem}()
 			payload,_:=json.Marshal(b)
-			req,_:=http.NewRequestWithContext(ctx,"POST","https://ip-api.com/batch?fields=status,isp,org,as,hosting,query",bytes.NewReader(payload))
+			req,_:=http.NewRequestWithContext(ctx,"POST","http://ip-api.com/batch?fields=status,isp,org,as,hosting,query",bytes.NewReader(payload))
 			req.Header.Set("Content-Type","application/json")
 			resp,err:=client.Do(req);if err!=nil{return};defer resp.Body.Close()
 			var rows []vpnGateIPResponse
