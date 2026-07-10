@@ -539,7 +539,6 @@ func sanitizeVPNGateOpenVPNConfigLITE(base64Config string) (string, error) {
         if len(fields) == 0 { continue }
         name := strings.ToLower(fields[0])
         if blocked[name] { continue }
-        if !safe[name] { continue }
         out = append(out, trim)
     }
     if err := scanner.Err(); err != nil { return "", err }
