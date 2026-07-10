@@ -2,67 +2,54 @@ name: Prebuilt Linux Bundle
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build-amd64:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+          - arch: arm64
+            platform: linux/arm64
+          - arch: arm
+            platform: linux/arm/v7
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.26.2'
-          cache: true
-      - name: Build amd64
-        env:
-          CGO_ENABLED: 1
-          GOPROXY: direct
+      - uses: docker/setup-qemu-action@v3
+      - name: Build bundle ${{ matrix.arch }}
         run: |
-          rm -rf build dist && mkdir -p build dist
-          go mod tidy
-          go build -ldflags "-w -s" -o build/x-ui main.go
-          chmod +x DockerInit.sh
-          ./DockerInit.sh amd64
-          cp x-ui.sh build/x-ui.sh
-          echo "$GITHUB_SHA" > build/.x-mili-commit
-          tar -C build -czf "dist/x-mili-linux-amd64.tar.gz" .
+          docker run --rm --platform "${{ matrix.platform }}" \
+            -e GITHUB_SHA="$GITHUB_SHA" \
+            -v "$PWD:/src" -w /src golang:1.26.2-bookworm sh -ec '
+              apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev unzip ca-certificates curl
+              rm -rf build dist && mkdir -p build dist
+              CGO_ENABLED=1 go build -ldflags "-w -s" -o build/x-ui main.go
+              chmod +x DockerInit.sh
+              ./DockerInit.sh "${{ matrix.arch }}"
+              cp x-ui.sh build/x-ui.sh
+              echo "$GITHUB_SHA" > build/.x-mili-commit
+              test -x build/x-ui
+              test -f build/x-ui.sh
+              test -d build/bin
+              ls -lh build/bin/
+              tar -C build -czf "dist/x-mili-linux-${{ matrix.arch }}.tar.gz" .
+            '
       - uses: actions/upload-artifact@v4
         with:
-          name: x-mili-linux-amd64
-          path: dist/x-mili-linux-amd64.tar.gz
-
-  build-arm64:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.26.2'
-          cache: true
-      - name: Build arm64
-        env:
-          CGO_ENABLED: 1
-          GOPROXY: direct
-        run: |
-          rm -rf build dist && mkdir -p build dist
-          go mod tidy
-          go build -ldflags "-w -s" -o build/x-ui main.go
-          chmod +x DockerInit.sh
-          ./DockerInit.sh arm64
-          cp x-ui.sh build/x-ui.sh
-          echo "$GITHUB_SHA" > build/.x-mili-commit
-          tar -C build -czf "dist/x-mili-linux-arm64.tar.gz" .
-      - uses: actions/upload-artifact@v4
-        with:
-          name: x-mili-linux-arm64
-          path: dist/x-mili-linux-arm64.tar.gz
+          name: x-mili-linux-${{ matrix.arch }}
+          path: dist/x-mili-linux-${{ matrix.arch }}.tar.gz
 
   publish:
-    needs: [build-amd64, build-arm64]
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,5 +67,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -f latest "$GITHUB_SHA"
           git push -f origin latest
-          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest LITE ARM" --notes "fix openvpn newline bug + outbound syntax" --prerelease
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest X-MILI LITE ARM" --notes "Auto build: amd64, arm64, arm - LITE low mem/disk, no log files" --prerelease
           gh release upload latest dist/x-mili-linux-*.tar.gz --clobber
