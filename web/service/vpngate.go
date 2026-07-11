@@ -9,7 +9,7 @@ type VPNGateService struct{}
 const (
 	vpnGateAPIURL     = "https://www.vpngate.net/api/iphone/"
 	vpnGateCacheTTL   = 10 * time.Minute
-	vpnGateMaxServers = 50
+	vpnGateMaxServers = 100
 )
 type VPNGateServer struct {
 	HostName string `json:"hostName"`; IP string `json:"ip"`; CountryLong string `json:"countryLong"`; CountryShort string `json:"countryShort"`; CountryShortLower string `json:"countryShortLower"`; NumSessions int64 `json:"numSessions"`; ISP string `json:"isp"`; ASN string `json:"asn"`; IPType string `json:"ipType"`; LocalPing int64 `json:"localPing"`; Proto string `json:"proto"`; Port string `json:"port"`; OpenVPNConfig string `json:"openVPNConfig"`
