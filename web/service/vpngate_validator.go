@@ -18,9 +18,9 @@ func TestVPNGateOpenVPN(server VPNGateServer)(bool,int64){
 	ovpn,err:=sanitizeVPNGateOpenVPNConfig(server.OpenVPNConfig);if err!=nil||!commandExists("openvpn"){return false,-1}
 	tmp,err:=os.CreateTemp("","vpngate-check-*.ovpn");if err!=nil{return false,-1};configPath:=tmp.Name();defer os.Remove(configPath)
 	if _,err:=tmp.WriteString(ovpn);err!=nil{tmp.Close();return false,-1};tmp.Close()
-	ctx,cancel:=context.WithTimeout(context.Background(),12*time.Second);defer cancel()
+	ctx,cancel:=context.WithTimeout(context.Background(),18*time.Second);defer cancel()
 	start:=time.Now();writer:=&openVPNLogWriter{}
-	cmd:=exec.CommandContext(ctx,"openvpn","--config",configPath,"--route-nopull","--auth-nocache","--verb","2","--connect-retry-max","1","--connect-timeout","5")
+	cmd:=exec.CommandContext(ctx,"openvpn","--config",configPath,"--route-nopull","--auth-nocache","--verb","2","--connect-retry-max","1","--connect-timeout","10")
 	cmd.Stdout=writer;cmd.Stderr=writer;if err:=cmd.Start();err!=nil{return false,-1}
 	done:=make(chan error,1);go func(){done<-cmd.Wait()}();ticker:=time.NewTicker(300*time.Millisecond);defer ticker.Stop()
 	for{select{case <-ticker.C:if writer.contains("Initialization Sequence Completed"){ms:=time.Since(start).Milliseconds();cancel();<-done;return true,ms};case <-done:if writer.contains("Initialization Sequence Completed"){return true,time.Since(start).Milliseconds()};return false,-1;case <-ctx.Done():<-done;return false,-1}}}
